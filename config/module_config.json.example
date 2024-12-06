@@ -1,0 +1,20 @@
+{
+  "modules": [
+    {
+      "name": "module1",
+      "path": "modules.module1.module1",
+      "env": {
+        "MODULE1_VAR1": "value1",
+        "MODULE1_VAR2": "value2"
+      }
+    },
+    {
+      "name": "module2",
+      "path": "modules.module2.module2",
+      "env": {
+        "MODULE2_VAR1": "value3",
+        "MODULE2_VAR2": "value4"
+      }
+    }
+  ]
+}

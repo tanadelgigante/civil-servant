@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      CONFIG_PATH: /config/module_config.json
+      MODULES_PATH: /modules
+    volumes:
+      - ./config:/config
+      - ./modules:/modules
