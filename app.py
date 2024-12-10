@@ -23,17 +23,21 @@ def load_modules():
     print(f"[INFO] Loading modules from configuration file: {config_path}")
     print(f"[INFO] Modules path: {modules_path}")
 
-    # Ensure the module path is in the Python path
+    # Aggiungi il percorso base dei moduli
     sys.path.append(modules_path)
 
     with open(config_path) as f:
         modules = json.load(f)['modules']
         for module in modules:
-            # Set environment variables for the module
+            # Aggiungi il percorso specifico di ogni modulo
+            module_specific_path = os.path.join(modules_path, module['name'])
+            sys.path.append(module_specific_path)
+
+            # Resto del codice di caricamento moduli rimane invariato
             print(f"[DEBUG] Setting environment variables for module: {module['name']}")
             for key, value in module.get('env', {}).items():
                 os.environ[key] = value
-
+                
             # Install module-specific requirements
             module_path = f"{modules_path}/{module['name']}"
             requirements_path = f"{module_path}/requirements.txt"
