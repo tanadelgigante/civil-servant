@@ -43,20 +43,26 @@ def load_modules():
 
             # Dynamically import and register the module
             print(f"[INFO] Importing and registering module: {module['path']}")
+            # In app.py, modifica la parte di importazione del modulo
             try:
-                mod = importlib.import_module(module['path'])
-                print(f"[DEBUG] Module path: {module['path']}")
-                print(f"[DEBUG] Module contents: {dir(mod)}")
+                # Usa il percorso completo
+                mod = importlib.import_module(f'modules.{module["path"]}.main')
                 
-                if hasattr(mod, 'register'):
-                    mod.register(app)
+                # Stampa informazioni di debug più dettagliate
+                print(f"[DEBUG] Module full path: {mod.__file__}")
+                print(f"[DEBUG] Module attributes: {dir(mod)}")
+                
+                # Cerca il metodo register in modo più esplicito
+                register_func = getattr(mod, 'register', None)
+                if register_func:
+                    register_func(app)
                     print(f"[INFO] Module {module['path']} registered successfully")
                 else:
-                    print(f"[WARNING] Module {module['path']} does not have a register method")
-            except ModuleNotFoundError as e:
-                print(f"[ERROR] ModuleNotFoundError: {e}")
-            except Exception as e:
-                print(f"[ERROR] Unexpected error: {e}")
+                    print(f"[WARNING] No register method found in module {module['path']}")
+            except ImportError as e:
+                print(f"[ERROR] Import error: {e}")
+            except AttributeError as e:
+                print(f"[ERROR] Attribute error: {e}")
 
 @app.route('/')
 def index():
