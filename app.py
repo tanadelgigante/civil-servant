@@ -43,11 +43,20 @@ def load_modules():
 
             # Dynamically import and register the module
             print(f"[INFO] Importing and registering module: {module['path']}")
-            mod = importlib.import_module(module['path'])
-            if hasattr(mod, 'register'):
-                mod.register(app)
-            else:
-                print(f"[WARNING] Module {module['path']} does not have a register method")
+            try:
+                mod = importlib.import_module(module['path'])
+                print(f"[DEBUG] Module path: {module['path']}")
+                print(f"[DEBUG] Module contents: {dir(mod)}")
+                
+                if hasattr(mod, 'register'):
+                    mod.register(app)
+                    print(f"[INFO] Module {module['path']} registered successfully")
+                else:
+                    print(f"[WARNING] Module {module['path']} does not have a register method")
+            except ModuleNotFoundError as e:
+                print(f"[ERROR] ModuleNotFoundError: {e}")
+            except Exception as e:
+                print(f"[ERROR] Unexpected error: {e}")
 
 @app.route('/')
 def index():
