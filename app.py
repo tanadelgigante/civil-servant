@@ -3,6 +3,7 @@ import importlib
 import json
 import subprocess
 import os
+import sys
 
 app = Flask(__name__)
 
@@ -21,6 +22,9 @@ def load_modules():
 
     print(f"[INFO] Loading modules from configuration file: {config_path}")
     print(f"[INFO] Modules path: {modules_path}")
+
+    # Ensure the module path is in the Python path
+    sys.path.append(modules_path)
 
     with open(config_path) as f:
         modules = json.load(f)['modules']
