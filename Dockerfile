@@ -1,12 +1,11 @@
-FROM python:3.9-slim
-
+# Dockerfile
+FROM eclipse-temurin:21-jdk as build
 WORKDIR /app
+COPY pom.xml ./
+COPY src ./src
+RUN ./mvnw package -DskipTests
 
-COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt
-
-COPY . .
-
-EXPOSE 5000
-
-CMD ["python", "app.py"]
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /app/target/polyglot-api-gateway-1.0-SNAPSHOT.jar app.jar
+ENTRYPOINT ["java", "-jar", "app.jar"]
