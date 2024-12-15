@@ -222,8 +222,11 @@ public class CivilServantApplication {
 
 @RestController
 class TestController {
+	private static final Logger logger = LoggerFactory.getLogger(TestController.class);
+	
 	@GetMapping("/test")
 	public Mono<String> test() {
+		logger.info("Test endpoint called");
 		return Mono.just("Civil Servant Gateway is working!");
 	}
 }
