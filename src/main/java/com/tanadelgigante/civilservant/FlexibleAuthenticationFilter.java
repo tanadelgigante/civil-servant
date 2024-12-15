@@ -27,16 +27,24 @@ public class FlexibleAuthenticationFilter extends AbstractGatewayFilterFactory<S
 	public GatewayFilter apply(ServiceConfigHelper config) {
 		return (exchange, chain) -> {
 			logger.debug("Searching auth");
-			// Extract token from multiple sources
-			String token = extractToken(exchange);
-			logger.debug("Token: " + token);
-
 			// Determine the service route
 			String servicePath = determineServicePath(exchange);
 			logger.debug("Service path: " + servicePath);
 
+			// Load service-specific authentication configuration
+			ServiceConfigHelper authConfig = loadServiceAuthConfig(servicePath);
+
+			if (authConfig == null) {
+				logger.warn("No authentication configuration found for service: {}", servicePath);
+				return unauthorized(exchange);
+			}
+
+			// Extract token from multiple sources as defined in service configuration
+			String token = extractToken(exchange, authConfig);
+			logger.debug("Token: " + token);
+
 			// Validate token for the specific service
-			if (isTokenValid(token, servicePath)) {
+			if (isTokenValid(token, authConfig)) {
 				logger.debug("Token is valid");
 				// Add token to downstream request headers if validation succeeds
 				ServerWebExchange modifiedExchange = enhanceExchangeWithToken(exchange, token);
@@ -50,32 +58,31 @@ public class FlexibleAuthenticationFilter extends AbstractGatewayFilterFactory<S
 		};
 	}
 
-	private String extractToken(ServerWebExchange exchange) {
-		// Bearer Token from Authorization Header
-		String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-		if (authHeader != null && authHeader.startsWith("Bearer ")) {
-			return authHeader.substring(7);
+	private String extractToken(ServerWebExchange exchange, ServiceConfigHelper authConfig) {
+		for (String method : authConfig.getSupportedExtractionMethods()) {
+			switch (method) {
+			case "authorization_header":
+				String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+				if (authHeader != null && authHeader.startsWith("Bearer ")) {
+					return authHeader.substring(7);
+				}
+				break;
+			case "query_param":
+				String queryToken = exchange.getRequest().getQueryParams().getFirst("auth_token");
+				if (queryToken != null) {
+					return queryToken;
+				}
+				break;
+			case "custom_header":
+				String customHeader = exchange.getRequest().getHeaders().getFirst("X-Auth-Token");
+				if (customHeader != null) {
+					return customHeader;
+				}
+				break;
+			default:
+				logger.warn("Unsupported extraction method: {}", method);
+			}
 		}
-
-		// Custom X-Auth-Token Header
-		String customHeader = exchange.getRequest().getHeaders().getFirst("X-Auth-Token");
-		if (customHeader != null) {
-			return customHeader;
-		}
-
-		// Query Parameter
-		String queryToken = exchange.getRequest().getQueryParams().getFirst("auth_token");
-		if (queryToken != null) {
-			return queryToken;
-		}
-
-		// Path-based Token
-		String path = exchange.getRequest().getPath().toString();
-		int tokenIndex = path.indexOf("/token/");
-		if (tokenIndex != -1) {
-			return path.substring(tokenIndex + 7);
-		}
-
 		return null;
 	}
 
@@ -86,39 +93,17 @@ public class FlexibleAuthenticationFilter extends AbstractGatewayFilterFactory<S
 		return pathSegments.length > 1 ? "/" + pathSegments[1] : path;
 	}
 
-	private boolean isTokenValid(String token, String servicePath) {
+	private boolean isTokenValid(String token, ServiceConfigHelper config) {
 		if (token == null) {
-			logger.warn("No token found for service path: {}", servicePath);
+			logger.warn("No token found");
 			return false;
 		}
 
 		try {
-			// Load service-specific authentiServicecation configuration
-			ServiceConfigHelper authConfig = loadServiceAuthConfig(servicePath);
-
-			if (authConfig == null) {
-				logger.warn("No authentication configuration found for service: {}", servicePath);
-				return false;
-			}
-
-			return validateTokenAgainstConfig(token, authConfig);
+			return validateTokenAgainstConfig(token, config);
 		} catch (Exception e) {
-			logger.error("Token validation error for service {}: {}", servicePath, e.getMessage());
+			logger.error("Token validation error: {}", e.getMessage());
 			return false;
-		}
-	}
-
-	private ServiceConfigHelper loadServiceAuthConfig(String servicePath) {
-		try {
-			// Locate service-config.json for the specific service
-			File configFile = new File("services" + servicePath, "service-config.json");
-			ServiceConfigHelper serviceHelper = ServiceConfigHelper.getInstance();
-			serviceHelper.loadConfig(configFile);
-
-			return serviceHelper;
-		} catch (IOException e) {
-			logger.error("Error reading service configuration", e);
-			return null;
 		}
 	}
 
@@ -159,5 +144,19 @@ public class FlexibleAuthenticationFilter extends AbstractGatewayFilterFactory<S
 		logger.warn("Unauthorized access attempt from IP: {}", exchange.getRequest().getRemoteAddress());
 		exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
 		return exchange.getResponse().setComplete();
+	}
+
+	private ServiceConfigHelper loadServiceAuthConfig(String servicePath) {
+		try {
+			// Locate service-config.json for the specific service
+			File configFile = new File("services" + servicePath, "service-config.json");
+			ServiceConfigHelper serviceHelper = ServiceConfigHelper.getInstance();
+			serviceHelper.loadConfig(configFile);
+
+			return serviceHelper;
+		} catch (IOException e) {
+			logger.error("Error reading service configuration", e);
+			return null;
+		}
 	}
 }

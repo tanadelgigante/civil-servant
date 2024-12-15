@@ -2,6 +2,7 @@ package com.tanadelgigante.civilservant;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,6 +61,14 @@ public class ServiceConfigHelper {
 
 	public JsonNode getVolumes() {
 		return config.path("volumes");
+	}
+
+	public List<String> getSupportedExtractionMethods() {
+		JsonNode methodsNode = config.path("auth").path("supported_extraction_methods");
+		if (methodsNode.isArray()) {
+			return new ObjectMapper().convertValue(methodsNode, List.class);
+		}
+		return List.of();
 	}
 
 	public String getValidationStrategy() {
