@@ -17,8 +17,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.server.ServerRequest;
+import org.springframework.web.reactive.function.server.ServerResponse;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -165,28 +170,28 @@ public class CivilServantApplication {
 	}
 
 	private static void configureVolumes(ServiceDescriptor descriptor) {
-	    JsonNode volumes = ServiceConfigHelper.getInstance().getVolumes();
-	    volumes.forEach(volume -> {
-	        String source = volume.path("source").asText();
-	        String target = volume.path("target").asText();
-	        boolean readOnly = volume.path("read_only").asBoolean();
-	        logger.info("Configuring volume for service {}: source={}, target={}, readOnly={}", descriptor.name, source, target, readOnly);
+		JsonNode volumes = ServiceConfigHelper.getInstance().getVolumes();
+		volumes.forEach(volume -> {
+			String source = volume.path("source").asText();
+			String target = volume.path("target").asText();
+			boolean readOnly = volume.path("read_only").asBoolean();
+			logger.info("Configuring volume for service {}: source={}, target={}, readOnly={}", descriptor.name, source,
+					target, readOnly);
 
-	        // Creare collegamenti simbolici
-	        try {
-	            Path sourcePath = Path.of(source);
-	            Path targetPath = Path.of(descriptor.basePath, target);
-	            Files.createDirectories(targetPath.getParent()); // Creare le directory parent se non esistono
-	            if (!Files.exists(targetPath)) {
-	                Files.createSymbolicLink(targetPath, sourcePath);
-	                logger.info("Created symlink from {} to {}", targetPath, sourcePath);
-	            }
-	        } catch (IOException e) {
-	            logger.error("Failed to create symlink for volume {}: {}", descriptor.name, e.getMessage());
-	        }
-	    });
+			// Creare collegamenti simbolici
+			try {
+				Path sourcePath = Path.of(source);
+				Path targetPath = Path.of(descriptor.basePath, target);
+				Files.createDirectories(targetPath.getParent()); // Creare le directory parent se non esistono
+				if (!Files.exists(targetPath)) {
+					Files.createSymbolicLink(targetPath, sourcePath);
+					logger.info("Created symlink from {} to {}", targetPath, sourcePath);
+				}
+			} catch (IOException e) {
+				logger.error("Failed to create symlink for volume {}: {}", descriptor.name, e.getMessage());
+			}
+		});
 	}
-
 
 	@Bean
 	public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
@@ -223,10 +228,44 @@ public class CivilServantApplication {
 @RestController
 class TestController {
 	private static final Logger logger = LoggerFactory.getLogger(TestController.class);
-	
+
 	@GetMapping("/test")
 	public Mono<String> test() {
 		logger.info("Test endpoint called");
 		return Mono.just("Civil Servant Gateway is working!");
+	}
+}
+
+@Component
+class GreetingHandler {
+
+	public Mono<ServerResponse> hello(ServerRequest request) {
+		return ServerResponse.ok().contentType(MediaType.APPLICATION_JSON)
+				.body(BodyInserters.fromValue(new Greeting("Hello, Spring!")));
+	}
+}
+
+class Greeting {
+
+	private String message;
+
+	public Greeting() {
+	}
+
+	public Greeting(String message) {
+		this.message = message;
+	}
+
+	public String getMessage() {
+		return this.message;
+	}
+
+	public void setMessage(String message) {
+		this.message = message;
+	}
+
+	@Override
+	public String toString() {
+		return "Greeting{" + "message='" + message + '\'' + '}';
 	}
 }
