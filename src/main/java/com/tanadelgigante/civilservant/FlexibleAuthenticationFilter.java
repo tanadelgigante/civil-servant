@@ -26,19 +26,25 @@ public class FlexibleAuthenticationFilter extends AbstractGatewayFilterFactory<S
 	@Override
 	public GatewayFilter apply(ServiceConfigHelper config) {
 		return (exchange, chain) -> {
+			logger.debug("Searching auth");
 			// Extract token from multiple sources
 			String token = extractToken(exchange);
+			logger.debug("Token: " + token);
 
 			// Determine the service route
 			String servicePath = determineServicePath(exchange);
+			logger.debug("Service path: " + servicePath);
 
 			// Validate token for the specific service
 			if (isTokenValid(token, servicePath)) {
+				logger.debug("Token is valid");
 				// Add token to downstream request headers if validation succeeds
 				ServerWebExchange modifiedExchange = enhanceExchangeWithToken(exchange, token);
+				logger.debug("Prosecuting chain...");
 				return chain.filter(modifiedExchange);
 			}
 
+			logger.debug("Not authorized");
 			// Unauthorized access
 			return unauthorized(exchange);
 		};
