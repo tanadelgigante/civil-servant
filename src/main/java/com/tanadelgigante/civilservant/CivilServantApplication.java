@@ -30,7 +30,7 @@ public class CivilServantApplication {
 	private static final Logger logger = LoggerFactory.getLogger(CivilServantApplication.class);
 
 	// Registry for tracking registered services
-	private static final ConcurrentHashMap<String, ServiceDescriptor> servicesRegistry = new ConcurrentHashMap<>();
+	static final ConcurrentHashMap<String, ServiceDescriptor> servicesRegistry = new ConcurrentHashMap<>();
 	private static final Set<String> existingRoutes = new HashSet<>();
 
 	public static void main(String[] args) {
@@ -162,17 +162,28 @@ public class CivilServantApplication {
 	}
 
 	private static void configureVolumes(ServiceDescriptor descriptor) {
-		JsonNode volumes = ServiceConfigHelper.getInstance().getVolumes();
-		volumes.forEach(volume -> {
-			String source = volume.path("source").asText();
-			String target = volume.path("target").asText();
-			boolean readOnly = volume.path("read_only").asBoolean();
-			logger.info("Configuring volume for service {}: source={}, target={}, readOnly={}", descriptor.name, source,
-					target, readOnly);
-			// Questo è un esempio di logging, l'effettiva implementazione della gestione
-			// dei volumi dipenderà dai tuoi requisiti specifici.
-		});
+	    JsonNode volumes = ServiceConfigHelper.getInstance().getVolumes();
+	    volumes.forEach(volume -> {
+	        String source = volume.path("source").asText();
+	        String target = volume.path("target").asText();
+	        boolean readOnly = volume.path("read_only").asBoolean();
+	        logger.info("Configuring volume for service {}: source={}, target={}, readOnly={}", descriptor.name, source, target, readOnly);
+
+	        // Creare collegamenti simbolici
+	        try {
+	            Path sourcePath = Path.of(source);
+	            Path targetPath = Path.of(descriptor.basePath, target);
+	            Files.createDirectories(targetPath.getParent()); // Creare le directory parent se non esistono
+	            if (!Files.exists(targetPath)) {
+	                Files.createSymbolicLink(targetPath, sourcePath);
+	                logger.info("Created symlink from {} to {}", targetPath, sourcePath);
+	            }
+	        } catch (IOException e) {
+	            logger.error("Failed to create symlink for volume {}: {}", descriptor.name, e.getMessage());
+	        }
+	    });
 	}
+
 
 	@Bean
 	public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
