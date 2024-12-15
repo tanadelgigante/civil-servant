@@ -97,37 +97,59 @@ public class CivilServantApplication {
 	}
 
 	private static void startService(ServiceDescriptor descriptor) {
-	    try {
-	        File setupScript = new File(descriptor.basePath, "setup.sh");
-	        if (!setupScript.exists()) {
-	            throw new RuntimeException("Missing setup.sh in " + descriptor.basePath);
-	        }
+		try {
+			File setupScript = new File(descriptor.basePath, "setup.sh");
+			if (!setupScript.exists()) {
+				throw new RuntimeException("Missing setup.sh in " + descriptor.basePath);
+			}
 
-	        ProcessBuilder processBuilder = new ProcessBuilder("bash", setupScript.getAbsolutePath());
-	        processBuilder.directory(new File(descriptor.basePath));
+			ProcessBuilder setupProcessBuilder = new ProcessBuilder("bash", setupScript.getAbsolutePath());
+			setupProcessBuilder.directory(new File(descriptor.basePath));
 
-	        // Configura le variabili d'ambiente
-	        configureEnvironment(processBuilder, descriptor);
+			// Configura le variabili d'ambiente
+			configureEnvironment(setupProcessBuilder, descriptor);
 
-	        // Configura i volumi
-	        configureVolumes(descriptor);
+			// Configura i volumi
+			configureVolumes(descriptor);
 
-	        descriptor.process = processBuilder.start();
+			Process setupProcess = setupProcessBuilder.start();
+			// Capture and log the output
+			new Thread(() -> {
+				try {
+					descriptor.process.getInputStream().transferTo(System.out);
+				} catch (IOException e) {
+					logger.error("Error capturing output for service {}", descriptor.name, e);
+				}
+			}).start();
+			setupProcess.waitFor(); // Attende il completamento dello script di setup
 
-	        logger.info("Started service {} with setup.sh", descriptor.name);
+			logger.info("Setup completed for service {}", descriptor.name);
 
-	        // Capture and log the output
-	        new Thread(() -> {
-	            try {
-	                descriptor.process.getInputStream().transferTo(System.out);
-	            } catch (IOException e) {
-	                logger.error("Error capturing output for service {}", descriptor.name, e);
-	            }
-	        }).start();
-	    } catch (IOException e) {
-	        logger.error("Failed to start service {}: {}", descriptor.name, e.getMessage(), e);
-	        throw new RuntimeException("Failed to start service: " + descriptor.name, e);
-	    }
+			// Lancia il comando di avvio
+			if (descriptor.startCommand != null && !descriptor.startCommand.isEmpty()) {
+				ProcessBuilder startProcessBuilder = new ProcessBuilder("bash", "-c", descriptor.startCommand);
+				startProcessBuilder.directory(new File(descriptor.basePath));
+
+				configureEnvironment(startProcessBuilder, descriptor);
+				configureVolumes(descriptor);
+
+				descriptor.process = startProcessBuilder.start();
+
+				logger.info("Started service {} with start command", descriptor.name);
+
+				// Capture and log the output
+				new Thread(() -> {
+					try {
+						descriptor.process.getInputStream().transferTo(System.out);
+					} catch (IOException e) {
+						logger.error("Error capturing output for service {}", descriptor.name, e);
+					}
+				}).start();
+			}
+		} catch (IOException | InterruptedException e) {
+			logger.error("Failed to start service {}: {}", descriptor.name, e.getMessage(), e);
+			throw new RuntimeException("Failed to start service: " + descriptor.name, e);
+		}
 	}
 
 	private static void configureEnvironment(ProcessBuilder processBuilder, ServiceDescriptor descriptor) {
