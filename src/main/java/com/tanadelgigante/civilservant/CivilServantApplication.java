@@ -35,7 +35,9 @@ public class CivilServantApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(CivilServantApplication.class, args);
+		logger.info("Civil Servant Application started on port 8187");
 		discoverAndRegisterServices();
+		logger.info("Services loaded!");
 	}
 
 	// Service Descriptor structure
@@ -85,6 +87,7 @@ public class CivilServantApplication {
 		serviceHelper.loadConfig(configFile);
 
 		String name = serviceHelper.getName();
+		logger.info("Service {} found", name);
 		String language = serviceHelper.getLanguage();
 		String basePath = servicePath.toString();
 		String startCommand = serviceHelper.getStartCommand();
