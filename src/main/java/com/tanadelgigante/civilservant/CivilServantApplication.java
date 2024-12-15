@@ -17,13 +17,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
-import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.server.ServerRequest;
-import org.springframework.web.reactive.function.server.ServerResponse;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -233,39 +228,5 @@ class TestController {
 	public Mono<String> test() {
 		logger.info("Test endpoint called");
 		return Mono.just("Civil Servant Gateway is working!");
-	}
-}
-
-@Component
-class GreetingHandler {
-
-	public Mono<ServerResponse> hello(ServerRequest request) {
-		return ServerResponse.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(BodyInserters.fromValue(new Greeting("Hello, Spring!")));
-	}
-}
-
-class Greeting {
-
-	private String message;
-
-	public Greeting() {
-	}
-
-	public Greeting(String message) {
-		this.message = message;
-	}
-
-	public String getMessage() {
-		return this.message;
-	}
-
-	public void setMessage(String message) {
-		this.message = message;
-	}
-
-	@Override
-	public String toString() {
-		return "Greeting{" + "message='" + message + '\'' + '}';
 	}
 }
