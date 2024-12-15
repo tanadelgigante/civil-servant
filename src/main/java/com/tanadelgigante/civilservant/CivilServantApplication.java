@@ -116,7 +116,7 @@ public class CivilServantApplication {
 			// Capture and log the output
 			new Thread(() -> {
 				try {
-					descriptor.process.getInputStream().transferTo(System.out);
+					setupProcess.getInputStream().transferTo(System.out);
 				} catch (IOException e) {
 					logger.error("Error capturing output for service {}", descriptor.name, e);
 				}
