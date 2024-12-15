@@ -15,6 +15,7 @@
 		<spring.cloud.version>4.2.0</spring.cloud.version>
 		<maven.compiler.source>21</maven.compiler.source> 
 		<maven.compiler.target>21</maven.compiler.target> 
+		<slf4j.version>2.0.9</slf4j.version>
 	</properties>
 	
 	<repositories>
@@ -29,16 +30,29 @@
 	</repositories>
 
 	<dependencies>
-		<!-- Spring Boot and Cloud Gateway -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-			<version>${spring.boot.version}</version>
-		</dependency>
-
+		<!-- Spring Cloud Gateway -->
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-gateway</artifactId>
+		</dependency>
+
+		<!-- Spring Boot Starter WebFlux (replacing traditional web starter) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webflux</artifactId>
+			<version>${spring.boot.version}</version>
+		</dependency>
+
+		<!-- Logging Dependencies -->
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>jul-to-slf4j</artifactId>
+			<version>${slf4j.version}</version>
 		</dependency>
 
 		<!-- Actuator for monitoring -->
@@ -61,16 +75,12 @@
 			<artifactId>spring-boot-maven-plugin</artifactId>
 			<version>${spring.boot.version}</version>
 		</dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-            <version>${spring.boot.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-            <version>${spring.boot.version}</version>
-        </dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter</artifactId>
+			<version>${spring.boot.version}</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -79,17 +89,24 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<version>${spring.boot.version}</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>repackage</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
-                <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
-                </configuration>
-            </plugin>
-            <plugin> 
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.1</version>
+				<configuration>
+					<source>${maven.compiler.source}</source>
+					<target>${maven.compiler.target}</target>
+				</configuration>
+			</plugin>
+			<plugin> 
 				<groupId>org.apache.maven.plugins</groupId> 
 				<artifactId>maven-jar-plugin</artifactId> 
 				<version>3.2.0</version> 
@@ -101,9 +118,8 @@
 					</archive> 
 				</configuration> 
 			</plugin>
-        </plugins>
-    </build>
-
+		</plugins>
+	</build>
 
 	<dependencyManagement>
 		<dependencies>
@@ -116,5 +132,4 @@
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
-
 </project>

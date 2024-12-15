@@ -1,4 +1,4 @@
-package com.tanadelgigante.civilservant.security;
+package com.tanadelgigante.civilservant;
 
 import java.io.File;
 import java.io.IOException;
@@ -6,41 +6,42 @@ import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.cloud.gateway.filter.GlobalFilter;
-import org.springframework.core.Ordered;
+import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import reactor.core.publisher.Mono;
 
 @Component
-public class FlexibleAuthenticationFilter implements GlobalFilter, Ordered {
+public class FlexibleAuthenticationFilter extends AbstractGatewayFilterFactory<ServiceConfigHelper> {
 	private static final Logger logger = LoggerFactory.getLogger(FlexibleAuthenticationFilter.class);
-	private static final ObjectMapper objectMapper = new ObjectMapper();
+
+	public FlexibleAuthenticationFilter() {
+		super(ServiceConfigHelper.class);
+	}
 
 	@Override
-	public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-		// Extract token from multiple sources
-		String token = extractToken(exchange);
+	public GatewayFilter apply(ServiceConfigHelper config) {
+		return (exchange, chain) -> {
+			// Extract token from multiple sources
+			String token = extractToken(exchange);
 
-		// Determine the service route
-		String servicePath = determineServicePath(exchange);
+			// Determine the service route
+			String servicePath = determineServicePath(exchange);
 
-		// Validate token for the specific service
-		if (isTokenValid(token, servicePath)) {
-			// Add token to downstream request headers if validation succeeds
-			ServerWebExchange modifiedExchange = enhanceExchangeWithToken(exchange, token);
-			return chain.filter(modifiedExchange);
-		}
+			// Validate token for the specific service
+			if (isTokenValid(token, servicePath)) {
+				// Add token to downstream request headers if validation succeeds
+				ServerWebExchange modifiedExchange = enhanceExchangeWithToken(exchange, token);
+				return chain.filter(modifiedExchange);
+			}
 
-		// Unauthorized access
-		return unauthorized(exchange);
+			// Unauthorized access
+			return unauthorized(exchange);
+		};
 	}
 
 	private String extractToken(ServerWebExchange exchange) {
@@ -86,8 +87,8 @@ public class FlexibleAuthenticationFilter implements GlobalFilter, Ordered {
 		}
 
 		try {
-			// Load service-specific authentication configuration
-			ServiceAuthConfig authConfig = loadServiceAuthConfig(servicePath);
+			// Load service-specific authentiServicecation configuration
+			ServiceConfigHelper authConfig = loadServiceAuthConfig(servicePath);
 
 			if (authConfig == null) {
 				logger.warn("No authentication configuration found for service: {}", servicePath);
@@ -101,52 +102,38 @@ public class FlexibleAuthenticationFilter implements GlobalFilter, Ordered {
 		}
 	}
 
-	private ServiceAuthConfig loadServiceAuthConfig(String servicePath) {
+	private ServiceConfigHelper loadServiceAuthConfig(String servicePath) {
 		try {
 			// Locate service-config.json for the specific service
 			File configFile = new File("services" + servicePath, "service-config.json");
-			if (!configFile.exists()) {
-				logger.warn("No service-config.json found for path: {}", servicePath);
-				return null;
-			}
+			ServiceConfigHelper serviceHelper = ServiceConfigHelper.getInstance();
+			serviceHelper.loadConfig(configFile);
 
-			JsonNode config = objectMapper.readTree(configFile);
-
-			// Extract authentication configuration
-			JsonNode authNode = config.path("auth");
-			if (authNode.isMissingNode()) {
-				logger.info("No auth configuration found in service-config.json for {}", servicePath);
-				return null;
-			}
-
-			return new ServiceAuthConfig(authNode.path("type").asText("token"),
-					authNode.path("validation_strategy").asText("exact_match"),
-					authNode.path("expected_token").asText(), authNode.path("token_regex").asText(""));
+			return serviceHelper;
 		} catch (IOException e) {
 			logger.error("Error reading service configuration", e);
 			return null;
 		}
 	}
 
-	private boolean validateTokenAgainstConfig(String token, ServiceAuthConfig config) {
-		switch (config.validationStrategy) {
+	private boolean validateTokenAgainstConfig(String token, ServiceConfigHelper config) {
+		switch (config.getValidationStrategy()) {
 		case "exact_match":
-			return token.equals(config.expectedToken);
+			return token.equals(config.getExpectedToken());
 		case "prefix":
-			return token.startsWith(config.expectedToken);
+			return token.startsWith(config.getExpectedToken());
 		case "regex":
-			return Pattern.matches(config.tokenRegex, token);
+			return Pattern.matches(config.getTokenRegex(), token);
 		case "jwt":
 			return validateJwtToken(token);
 		default:
-			logger.warn("Unknown validation strategy: {}", config.validationStrategy);
+			logger.warn("Unknown validation strategy: {}", config.getValidationStrategy());
 			return false;
 		}
 	}
 
 	private boolean validateJwtToken(String token) {
 		// Placeholder for JWT validation
-		// In a real implementation, use a JWT library like JJWT
 		try {
 			// Validate token structure, signature, expiration, etc.
 			return token != null && token.split("\\.").length == 3;
@@ -164,32 +151,7 @@ public class FlexibleAuthenticationFilter implements GlobalFilter, Ordered {
 
 	private Mono<Void> unauthorized(ServerWebExchange exchange) {
 		logger.warn("Unauthorized access attempt from IP: {}", exchange.getRequest().getRemoteAddress());
-
 		exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
 		return exchange.getResponse().setComplete();
-	}
-
-	@Override
-	public int getOrder() {
-		return -100; // High priority, run early in filter chain
-	}
-
-	// Inner classes for configuration and token extraction
-	private interface TokenExtractionMethod {
-		String extractToken(ServerWebExchange exchange);
-	}
-
-	private static class ServiceAuthConfig {
-		final String type;
-		final String validationStrategy;
-		final String expectedToken;
-		final String tokenRegex;
-
-		ServiceAuthConfig(String type, String validationStrategy, String expectedToken, String tokenRegex) {
-			this.type = type;
-			this.validationStrategy = validationStrategy;
-			this.expectedToken = expectedToken;
-			this.tokenRegex = tokenRegex;
-		}
 	}
 }
