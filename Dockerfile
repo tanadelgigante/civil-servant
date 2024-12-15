@@ -10,5 +10,5 @@ RUN ls -l /app/target  # Debug: verifica se il file JAR è presente nella direct
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /app/target/civilservant-1.0-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/civilservant*.jar app.jar
 ENTRYPOINT ["java", "-jar", "app.jar"]
