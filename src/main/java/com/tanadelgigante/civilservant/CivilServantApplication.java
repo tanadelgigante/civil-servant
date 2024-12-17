@@ -20,8 +20,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import reactor.core.publisher.Mono;
 
 @SpringBootApplication
@@ -109,9 +107,6 @@ public class CivilServantApplication {
 			ProcessBuilder setupProcessBuilder = new ProcessBuilder("bash", setupScript.getAbsolutePath());
 			setupProcessBuilder.directory(new File(descriptor.basePath));
 
-			// Configura le variabili d'ambiente
-			configureEnvironment(setupProcessBuilder, descriptor);
-
 			Process setupProcess = setupProcessBuilder.start();
 			// Capture and log the output
 			new Thread(() -> {
@@ -130,8 +125,6 @@ public class CivilServantApplication {
 				ProcessBuilder startProcessBuilder = new ProcessBuilder("bash", "-c", descriptor.startCommand);
 				startProcessBuilder.directory(new File(descriptor.basePath));
 
-				configureEnvironment(startProcessBuilder, descriptor);
-
 				descriptor.process = startProcessBuilder.start();
 
 				logger.info("Started service {} with start command", descriptor.name);
@@ -149,15 +142,6 @@ public class CivilServantApplication {
 			logger.error("Failed to start service {}: {}", descriptor.name, e.getMessage(), e);
 			throw new RuntimeException("Failed to start service: " + descriptor.name, e);
 		}
-	}
-
-	private static void configureEnvironment(ProcessBuilder processBuilder, ServiceDescriptor descriptor) {
-		JsonNode envVariables = ServiceConfigHelper.getInstance().getEnvironment();
-		envVariables.fields().forEachRemaining(entry -> {
-			String key = entry.getKey();
-			String value = entry.getValue().asText();
-			processBuilder.environment().put(key, value);
-		});
 	}
 
 	@Bean
