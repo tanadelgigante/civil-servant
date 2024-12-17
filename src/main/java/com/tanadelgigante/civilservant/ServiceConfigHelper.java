@@ -72,7 +72,8 @@ public class ServiceConfigHelper {
 	}
 
 	public String getValidationStrategy() {
-		return config.path("auth").path("validation_strategy").asText();
+	    // Use path() with a default value to handle different key naming
+	    return config.path("auth").path("validationStrategy").asText(config.path("auth").path("validation_strategy").asText());
 	}
 
 	public String getExpectedToken() {
