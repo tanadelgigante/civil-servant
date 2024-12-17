@@ -59,10 +59,6 @@ public class ServiceConfigHelper {
 		return config.path("environment");
 	}
 
-	public JsonNode getVolumes() {
-		return config.path("volumes");
-	}
-
 	public List<String> getSupportedExtractionMethods() {
 		JsonNode methodsNode = config.path("auth").path("supported_extraction_methods");
 		if (methodsNode.isArray()) {
@@ -72,8 +68,9 @@ public class ServiceConfigHelper {
 	}
 
 	public String getValidationStrategy() {
-	    // Use path() with a default value to handle different key naming
-	    return config.path("auth").path("validationStrategy").asText(config.path("auth").path("validation_strategy").asText());
+		// Use path() with a default value to handle different key naming
+		return config.path("auth").path("validationStrategy")
+				.asText(config.path("auth").path("validation_strategy").asText());
 	}
 
 	public String getExpectedToken() {

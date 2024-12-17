@@ -112,9 +112,6 @@ public class CivilServantApplication {
 			// Configura le variabili d'ambiente
 			configureEnvironment(setupProcessBuilder, descriptor);
 
-			// Configura i volumi
-			configureVolumes(descriptor);
-
 			Process setupProcess = setupProcessBuilder.start();
 			// Capture and log the output
 			new Thread(() -> {
@@ -134,7 +131,6 @@ public class CivilServantApplication {
 				startProcessBuilder.directory(new File(descriptor.basePath));
 
 				configureEnvironment(startProcessBuilder, descriptor);
-				configureVolumes(descriptor);
 
 				descriptor.process = startProcessBuilder.start();
 
@@ -161,30 +157,6 @@ public class CivilServantApplication {
 			String key = entry.getKey();
 			String value = entry.getValue().asText();
 			processBuilder.environment().put(key, value);
-		});
-	}
-
-	private static void configureVolumes(ServiceDescriptor descriptor) {
-		JsonNode volumes = ServiceConfigHelper.getInstance().getVolumes();
-		volumes.forEach(volume -> {
-			String source = volume.path("source").asText();
-			String target = volume.path("target").asText();
-			boolean readOnly = volume.path("read_only").asBoolean();
-			logger.info("Configuring volume for service {}: source={}, target={}, readOnly={}", descriptor.name, source,
-					target, readOnly);
-
-			// Creare collegamenti simbolici
-			try {
-				Path sourcePath = Path.of(source);
-				Path targetPath = Path.of(descriptor.basePath, target);
-				Files.createDirectories(targetPath.getParent()); // Creare le directory parent se non esistono
-				if (!Files.exists(targetPath)) {
-					Files.createSymbolicLink(targetPath, sourcePath);
-					logger.info("Created symlink from {} to {}", targetPath, sourcePath);
-				}
-			} catch (IOException e) {
-				logger.error("Failed to create symlink for volume {}: {}", descriptor.name, e.getMessage());
-			}
 		});
 	}
 
