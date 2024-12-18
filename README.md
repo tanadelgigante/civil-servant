@@ -1,26 +1,28 @@
 # Civil Servant
 
 ## Overview
-**Civil Servant** is a modular API server built with Flask, designed to dynamically load and initialize modules based on configuration. This project enables you to extend the server's functionality by adding custom modules with ease.
+**Civil Servant** is a modular API gateway built with Spring Boot and Spring Cloud Gateway. It is designed to dynamically discover, register, and proxy services, enabling seamless integration of new services while providing a central access point.
 
 ## Features
-- **Dynamic Module Loading**: Load and initialize modules dynamically based on a JSON configuration file.
-- **Modular Architecture**: Extend the server's capabilities by adding new modules without modifying the core server code.
-- **Environment Variable Management**: Each module can have its own set of environment variables.
-- **Automatic Dependency Installation**: Install module-specific dependencies automatically.
+- **Dynamic Service Discovery**: Automatically discovers services with `service-config.json` files in a designated directory.
+- **Service Registration**: Registers services dynamically and proxies requests to them.
+- **Route Management**: Automatically configures routes based on service descriptors.
+- **Modular Architecture**: Easily extend functionality by adding new services or enhancing the gateway logic.
+- **Environment Variable and Configuration Support**: Services can include their own configuration and setup scripts.
 
 ## Application Information
 - **Name**: Civil Servant
 - **Version**: 1.0.0
-- **Author**: Your Name
-- **Website**: [http://example.com](http://example.com)
+- **Author**: @ilgigante77
+- **Website**: [https://github.com/tanadelgigante/civil-servant](https://github.com/tanadelgigante/civil-servant)
 
 ## Getting Started
 
 ### Prerequisites
-- Python 3.9+
-- Flask 2.1.0
-- Docker (optional)
+- Java 17+
+- Maven 3.8+
+- Docker (optional for containerized deployment)
+- Python 3.9+ for services like Calibre API
 
 ### Installation
 
@@ -30,106 +32,123 @@
     cd civil-servant
     ```
 
-2. **Install the required Python packages**:
+2. **Build the application**:
     ```bash
-    pip install -r requirements.txt
+    mvn clean install
     ```
+
+3. **Create the services directory**:
+    Create a `services/` directory in the project root. Each service should have its own subdirectory with a `service-config.json` file and optional `setup.sh` script.
 
 ### Configuration
 
-1. **Create the Configuration File**:
-   Create a `config/module_config.json` file with the following structure:
+1. **Define Routes and Services**:
+   Ensure each service directory contains a `service-config.json` with the following structure:
     ```json
     {
-      "modules": [
-        {
-          "name": "module1",
-          "path": "modules.module1",
-          "env": {
-            "MODULE1_VAR1": "value1",
-            "MODULE1_VAR2": "value2"
-          }
-        },
-        {
-          "name": "module2",
-          "path": "modules.module2",
-          "env": {
-            "MODULE2_VAR1": "value3",
-            "MODULE2_VAR2": "value4"
-          }
-        }
-      ]
+      "name": "sample-api",
+      "language": "python",
+      "route": "/sample-api",
+      "startCommand": "your_startuè_command_here"
     }
     ```
 
-2. **Module Structure**:
-   Each module should be structured as a Python package with an `__init__.py` and a `register` function. For example:
-    ```
-    modules/
-    ├── module1/
-    │   ├── __init__.py
-    │   ├── module1.py
-    │   ├── requirements.txt
-    ├── module2/
-    │   ├── __init__.py
-    │   ├── module2.py
-    │   ├── requirements.txt
+2. **Service Setup**:
+   Each service directory can include a `setup.sh` script to prepare its environment (e.g., install dependencies).
+
+3. **Application Configuration**:
+   Update `application.yml` as needed to customize gateway routes or application settings:
+    ```yaml
+    server:
+      port: 8187
+
+    logging:
+      level:
+        root: INFO
+        com.tanadelgigante: DEBUG
+
+    spring:
+      cloud:
+        gateway:
+          routes:
+            - id: sample-api
+              uri: http://127.0.0.1:8000
+              predicates:
+                - Path=/sample-api/**
+              filters:
+                - StripPrefix=1
     ```
 
-### Running the Server
+### Running the Application
 
 1. **Run Locally**:
     ```bash
-    python app.py
+    mvn spring-boot:run
     ```
 
 2. **Using Docker**:
-   Create a `Dockerfile`:
+   Create a `Dockerfile` for the gateway:
     ```dockerfile
-    FROM python:3.9-slim
-
-    WORKDIR /app
-
-    COPY . .
-
-    RUN pip install --no-cache-dir -r requirements.txt
-
-    EXPOSE 5000
-
-    CMD ["python", "app.py"]
+    
+		FROM eclipse-temurin:21-jdk as build
+		WORKDIR /app
+		COPY .mvn/ .mvn/
+		COPY mvnw .
+		COPY pom.xml .
+		COPY src ./src
+		RUN ./mvnw package -DskipTests
+		RUN ls -l /app/target 		
+		
+		FROM eclipse-temurin:21-jre
+		WORKDIR /app
+		COPY --from=build /app/target/civilservant*.jar app.jar
+		VOLUME /config
+		ENTRYPOINT ["java", "-jar", "app.jar", "--spring.config.location=/config/application.yml"]
     ```
 
    Build and run the Docker container:
     ```bash
     docker build -t civil-servant .
-    docker run -p 5000:5000 civil-servant
+    docker run -p 8187:8187 civil-servant
     ```
+
+3. **Service Execution**:
+   - Ensure services have valid configurations and scripts.
+   - The gateway will automatically discover and start services using their `startCommand`.
 
 ### Usage
 
 #### API Endpoints
-
-- **GET /**:
+- **Health Check**:
+    ```bash
+    curl http://localhost:8187/test
     ```
-    curl http://localhost:5000/
-    ```
-
     Response:
     ```json
     {
-      "message": "Welcome to the generic API server!"
+      "message": "Civil Servant Gateway is working!"
     }
     ```
 
+- **Proxy Requests**:
+    - Example: Access the Calibre API:
+      ```bash
+      curl -X GET http://localhost:8187/sample-api/endpoint?api_token=your_32_char_token
+      ```
+
 ### Debugging
 
-- The server provides debug information in the console output. Look for `[INFO]`, `[DEBUG]`, and `[WARNING]` messages to understand the server's behavior and troubleshoot issues.
+- Use the application logs to monitor service registration and route configuration. Look for `[INFO]` and `[DEBUG]` messages in the console output.
+- To debug individual services, check their logs during startup.
 
 ### Contributing
-Contributions are welcome! Please fork the repository and submit pull requests for any enhancements or bug fixes.
+Contributions are welcome! Fork the repository and submit pull requests for enhancements or bug fixes.
 
 ### License
 This project is licensed under the GPL 3.0 License. See the [LICENSE](LICENSE) file for details.
 
+### Disclaimer
+This project is released "as-is" and the author is not responsible for damage, errors, or misuse.
+
 ## Contact
-For more information, visit [http://example.com](http://example.com) or contact [Your Name](mailto:youremail@example.com).
+For more information, visit [https://github.com/tanadelgigante/civil-servant](https://github.com/tanadelgigante/civil-servant).
