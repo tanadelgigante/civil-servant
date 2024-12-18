@@ -2,11 +2,16 @@ services:
   civil-servant:
     build: .
     ports:
-      - "8187:8080"
+      - "8187:8187"
     networks:
       - gateway-network
     volumes:
+      - /srv/civil-servant/services:/app/services
+      - /srv/civil-servant/config:/config
       - /path/to/dir:/container/dir
+    environment:
+       - PROPERTY1:prop1
+       - PROPERTY2:prop2
 
 networks:
   gateway-network:

@@ -2,24 +2,5 @@
   "name": "example-service",
   "language": "python",
   "route": "/example-service",
-  "auth": {
-    "supported_extraction_methods": [
-      "authorization_header",
-      "query_param",
-      "custom_header"
-    ]
-  },
-  "auth_token": "change_this_32_char_token_in_production",
-  "start_command": "custom_command_here",
-  "environment": {
-    "PROPERTY1": "prop1",
-    "PROPERTY2": "prop2"
-  },
-  "volumes": [
-    {
-      "source": "/path/to/dir",
-      "target": "/container/dir",
-      "read_only": "true | false"
-    }
-  ]
+  "start_command": "custom_command_here"
 }
