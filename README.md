@@ -12,17 +12,16 @@
 
 ## Application Information
 - **Name**: Civil Servant
-- **Version**: 1.0.0
+- **Version**: 2.0.0 (vedi `version.ini`, unica sorgente di verita')
 - **Author**: @ilgigante77
 - **Website**: [https://github.com/tanadelgigante/civil-servant](https://github.com/tanadelgigante/civil-servant)
 
 ## Getting Started
 
 ### Prerequisites
-- Java 17+
-- Maven 3.8+
+- Java 25 (LTS)
+- Maven 3.9+
 - Docker (optional for containerized deployment)
-- Python 3.9+ for services like Calibre API
 
 ### Installation
 
@@ -43,21 +42,23 @@
 ### Configuration
 
 1. **Define Routes and Services**:
-   Ensure each service directory contains a `service-config.json` with the following structure:
+   Ensure each service directory contains a `service-config.json`. The gateway accetta
+   sia il campo legacy `start_command` (snake_case) sia `startCommand` (camelCase),
+   con precedenza `start.command` > `startCommand` > `start_command`. Esempio legacy:
     ```json
     {
       "name": "sample-api",
       "language": "python",
       "route": "/sample-api",
-      "startCommand": "your_startuè_command_here"
+      "start_command": "your_start_command_here"
     }
     ```
 
 2. **Service Setup**:
-   Each service directory can include a `setup.sh` script to prepare its environment (e.g., install dependencies).
+   Each service directory can include an optional `setup.sh` script to prepare its environment (e.g., install dependencies).
 
 3. **Application Configuration**:
-   Update `application.yml` as needed to customize gateway routes or application settings:
+   Update `config/application.yml` as needed to customize gateway routes or application settings:
     ```yaml
     server:
       port: 8187
@@ -70,13 +71,15 @@
     spring:
       cloud:
         gateway:
-          routes:
-            - id: sample-api
-              uri: http://127.0.0.1:8000
-              predicates:
-                - Path=/sample-api/**
-              filters:
-                - StripPrefix=1
+          server:
+            webflux:
+              routes:
+                - id: sample-api
+                  uri: http://127.0.0.1:8000
+                  predicates:
+                    - Path=/sample-api/**
+                  filters:
+                    - StripPrefix=1
     ```
 
 ### Running the Application
@@ -87,23 +90,19 @@
     ```
 
 2. **Using Docker**:
-   Create a `Dockerfile` for the gateway:
+   The `Dockerfile` (multi-stage) builds the JAR with a Maven image pinned to Java 25 and runs it on `eclipse-temurin:25-jre`:
     ```dockerfile
-    
-		FROM eclipse-temurin:21-jdk as build
-		WORKDIR /app
-		COPY .mvn/ .mvn/
-		COPY mvnw .
-		COPY pom.xml .
-		COPY src ./src
-		RUN ./mvnw package -DskipTests
-		RUN ls -l /app/target 		
-		
-		FROM eclipse-temurin:21-jre
-		WORKDIR /app
-		COPY --from=build /app/target/civilservant*.jar app.jar
-		VOLUME /config
-		ENTRYPOINT ["java", "-jar", "app.jar", "--spring.config.location=/config/application.yml"]
+    FROM maven:3.9.11-eclipse-temurin-25 AS build
+    WORKDIR /app
+    COPY pom.xml .
+    COPY src ./src
+    RUN mvn package -DskipTests
+
+    FROM eclipse-temurin:25-jre
+    WORKDIR /app
+    COPY --from=build /app/target/civilservant*.jar app.jar
+    VOLUME /config
+    ENTRYPOINT ["java", "-jar", "app.jar", "--spring.config.location=/config/application.yml"]
     ```
 
    Build and run the Docker container:
@@ -112,9 +111,15 @@
     docker run -p 8187:8187 civil-servant
     ```
 
+   > ⚠️ `docker-compose.yaml` e `.env.example` sono **esempi generici**: mostrano
+   > la forma, non i valori reali. I valori reali (path, credenziali, proprieta')
+   > li definisce l'installatore nella propria installazione. Vedi
+   > [`docs/architecture.md`](docs/architecture.md).
+
 3. **Service Execution**:
    - Ensure services have valid configurations and scripts.
-   - The gateway will automatically discover and start services using their `startCommand`.
+   - The gateway will automatically discover and start services using the start
+     command (`start.command` > `startCommand` > `start_command`).
 
 ### Usage
 

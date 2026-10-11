@@ -1,17 +1,59 @@
+# docker-compose.yaml — ESEMPIO GENERICO (convenzione D21).
+#
+# NON e' la configurazione di produzione: i valori reali (path, credenziali,
+# proprieta') li definisce l'installatore nella propria installazione. Qui sono
+# mostrati placeholder volutamente riconoscibili (`/path/to/dir`, `CHANGE_ME`,
+# `PROPERTY1`) e mai valori plausibili e inventati (R62).
+#
+# Significato, default e comportamento in caso di valore mancante o errato di
+# ogni campo sono documentati lì dove il campo è dichiarato (R63) e in
+# `docs/architecture.md`. Le proprietà d'ambiente dichiarate qui trovano la
+# loro documentazione estesa in `.env.example`; i due supporti sono coerenti
+# fra loro (R64). Il progetto non prescrive alcuna via di override (R101).
+
 services:
   civil-servant:
     build: .
+    # Nome dell'immagine prodotta dal Dockerfile; utile per riferirla nei comandi.
+    image: civil-servant:local
+    # Politica di riavvio: riavvia il gateway se termina in modo anomalo.
+    restart: unless-stopped
+    # Utente:gruppo (UID:GID) con cui gira il processo. Placeholder da sostituire
+    # con l'utente dell'installazione. L'hardening non-root e' in FASE 9 (Task 2.3e).
+    user: "1000:1000"
     ports:
+      # <porta-host>:<porta-container>. La porta interna e' fissata in
+      # config/application.yml (server.port: 8187).
       - "8187:8187"
     networks:
       - gateway-network
     volumes:
-      - /srv/civil-servant/services:/app/services
-      - /srv/civil-servant/config:/config
-      - /path/to/dir:/container/dir
+      # Bundle dei plugin: ogni sottodirectory con un service-config.json viene
+      # scoperta. Path canonico d'esempio: /path/to/dir (R102). Volume di
+      # PRODUZIONE: deve sopravvivere al riavvio, mai su tmpfs (R59).
+      - /path/to/dir/services:/app/services
+      # Configurazione del gateway (application.yml), caricata via
+      # --spring.config.location. Volume di PRODUZIONE.
+      - /path/to/dir/config:/config
+      # Persistenza dei runtime installati on-demand (FASE 4). Volume di
+      # PRODUZIONE: deve sopravvivere al riavvio, mai su tmpfs (R59).
+      - /path/to/dir/data:/app/data
     environment:
-       - PROPERTY1:prop1
-       - PROPERTY2:prop2
+      # PROPERTY1 e PROPERTY2 sono ESEMPI di proprieta' d'ambiente: mostrano la
+      # forma, non valori reali. Default: CHANGE_ME. Se mancano, il gateway
+      # parte comunque (il placeholder resta CHANGE_ME). Documentazione estesa
+      # in .env.example (R63, R64).
+      - PROPERTY1=${PROPERTY1:-CHANGE_ME}
+      - PROPERTY2=${PROPERTY2:-CHANGE_ME}
+    healthcheck:
+      # Verifica che la porta del gateway sia in ascolto. Richiede `bash`
+      # nell'immagine (presente in eclipse-temurin). L'endpoint di salute reale
+      # e' GET /test (FASE 5 estendera' lo stato esposto).
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8187"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
 
 networks:
   gateway-network:
