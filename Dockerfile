@@ -1,12 +1,9 @@
 # Fase di build
-FROM eclipse-temurin:21-jdk as build
+FROM maven:3.9.11-eclipse-temurin-21 AS build
 WORKDIR /app
-COPY .mvn/ .mvn/
-COPY mvnw .
 COPY pom.xml .
 COPY src ./src
-RUN ./mvnw package -DskipTests
-RUN ls -l /app/target  # Debug: verifica se il file JAR è presente nella directory target
+RUN mvn package -DskipTests
 
 # Fase di runtime
 FROM eclipse-temurin:21-jre
