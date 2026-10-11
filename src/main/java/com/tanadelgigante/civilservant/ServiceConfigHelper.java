@@ -3,8 +3,8 @@ package com.tanadelgigante.civilservant;
 import java.io.File;
 import java.io.IOException;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 public class ServiceConfigHelper {
 	private JsonNode config;

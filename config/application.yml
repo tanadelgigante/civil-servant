@@ -9,16 +9,18 @@ logging:
 spring:
   cloud:
     gateway:
-      routes:
-        - id: example-service-1
-          uri: http://127.0.0.1:8000
-          predicates:
-            - Path=/example1/**
-          filters:
-            - StripPrefix=1
-        - id: example-service-2
-          uri: http://127.0.0.1:8001
-          predicates:
-            - Path=/example2/**
-          filters:
-            - StripPrefix=1
+      server:
+        webflux:
+          routes:
+            - id: example-service-1
+              uri: http://127.0.0.1:8000
+              predicates:
+                - Path=/example1/**
+              filters:
+                - StripPrefix=1
+            - id: example-service-2
+              uri: http://127.0.0.1:8001
+              predicates:
+                - Path=/example2/**
+              filters:
+                - StripPrefix=1

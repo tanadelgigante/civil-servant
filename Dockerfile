@@ -1,12 +1,12 @@
-# Fase di build
-FROM maven:3.9.11-eclipse-temurin-21 AS build
+# Fase di build (R98: immagine con Maven, tag bloccato; Java 25 dopo FASE 1)
+FROM maven:3.9.11-eclipse-temurin-25 AS build
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
 RUN mvn package -DskipTests
 
-# Fase di runtime
-FROM eclipse-temurin:21-jre
+# Fase di runtime (Java 25, stessa JVM del builder)
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 COPY --from=build /app/target/civilservant*.jar app.jar
 VOLUME /config

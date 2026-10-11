@@ -10,14 +10,14 @@
 	<packaging>jar</packaging>
 
 	<properties>
-		<java.version>21</java.version>
-		<spring.boot.version>3.4.0</spring.boot.version>
-		<spring.cloud.version>4.2.0</spring.cloud.version>
-		<maven.compiler.source>21</maven.compiler.source> 
-		<maven.compiler.target>21</maven.compiler.target> 
-		<slf4j.version>2.0.9</slf4j.version>
+		<!-- D3: Java 25 LTS, Spring Boot 4.x, Spring Cloud 2025.x -->
+		<java.version>25</java.version>
+		<maven.compiler.release>25</maven.compiler.release>
+		<spring.boot.version>4.0.7</spring.boot.version>
+		<spring.cloud.version>2025.1.2</spring.cloud.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
-	
+
 	<repositories>
 		<repository>
 			<id>spring-milestone</id>
@@ -29,57 +29,50 @@
 		</repository>
 	</repositories>
 
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-dependencies</artifactId>
+				<version>${spring.boot.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring.cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
 	<dependencies>
-		<!-- Spring Cloud Gateway -->
+		<!-- Spring Cloud Gateway (WebFlux); il vecchio artifact
+		     spring-cloud-starter-gateway e' stato rimosso nel train 2025.1 -->
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-starter-gateway</artifactId>
+			<artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
 		</dependency>
 
-		<!-- Spring Boot Starter WebFlux (replacing traditional web starter) -->
+		<!-- Spring Boot Starter WebFlux -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webflux</artifactId>
-			<version>${spring.boot.version}</version>
-		</dependency>
-
-		<!-- Logging Dependencies -->
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>${slf4j.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>jul-to-slf4j</artifactId>
-			<version>${slf4j.version}</version>
 		</dependency>
 
 		<!-- Actuator for monitoring -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
-			<version>${spring.boot.version}</version>
 		</dependency>
 
-		<!-- Dependency for JSON handling (Jackson) -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-databind</artifactId>
-			<version>2.15.0</version>
-		</dependency>
-
-		<!-- Spring Boot Maven Plugin for packaging the application -->
+		<!-- Test stack (JUnit 5, AssertJ, Mockito, ...) gestito da Spring Boot -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-maven-plugin</artifactId>
-			<version>${spring.boot.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter</artifactId>
-			<version>${spring.boot.version}</version>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 
@@ -100,36 +93,23 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.1</version>
+				<version>3.14.0</version>
 				<configuration>
-					<source>${maven.compiler.source}</source>
-					<target>${maven.compiler.target}</target>
+					<release>${maven.compiler.release}</release>
 				</configuration>
 			</plugin>
-			<plugin> 
-				<groupId>org.apache.maven.plugins</groupId> 
-				<artifactId>maven-jar-plugin</artifactId> 
-				<version>3.2.0</version> 
-				<configuration> 
-					<archive> 
-						<manifest> 
-							<mainClass>com.tanadelgigante.civilservant.CivilServantApplication</mainClass> 
-						</manifest> 
-					</archive> 
-				</configuration> 
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>3.4.2</version>
+				<configuration>
+					<archive>
+						<manifest>
+							<mainClass>com.tanadelgigante.civilservant.CivilServantApplication</mainClass>
+						</manifest>
+					</archive>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
-
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>org.springframework.cloud</groupId>
-				<artifactId>spring-cloud-dependencies</artifactId>
-				<version>2024.0.0</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
 </project>
