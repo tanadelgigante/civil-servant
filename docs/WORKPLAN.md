@@ -5,7 +5,7 @@
 **Profilo:** `Estesa`
 **Versione target:** `v2.0.0`
 **Data stesura:** 2026-09-26
-**Revisione:** Rev. 8 — 2026-09-26
+**Revisione:** Rev. 9 — 2026-10-27
 **Autore:** Designer (architetto software)
 **Stato:** IN APPROVAZIONE
 **Lingua:** it
