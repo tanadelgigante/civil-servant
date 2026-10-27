@@ -67,7 +67,7 @@ public final class ServiceConfigHelper {
 
 		RuntimeBlock runtime = parseRuntime(root, languageField);
 		RouteBlock route = parseRoute(root, name, fileName);
-		BackendBlock backend = parseBackend(root);
+		BackendBlock backend = parseBackend(root, fileName, schemaVersion);
 		HealthBlock health = parseHealth(root);
 		SetupBlock setup = parseSetup(root);
 		StartBlock start = parseStart(root, fileName);
@@ -141,9 +141,9 @@ public final class ServiceConfigHelper {
 		return new RouteBlock("/" + name, 1);
 	}
 
-	private static BackendBlock parseBackend(JsonNode root) {
+	private static BackendBlock parseBackend(JsonNode root, String fileName, int schemaVersion) {
 		JsonNode node = root.get("backend");
-		String host = "127.0.0.1";
+		String host = "0.0.0.0";
 		Integer port = null;
 		String portMode = null;
 		if (node != null && node.isObject()) {
@@ -153,6 +153,19 @@ public final class ServiceConfigHelper {
 			}
 			port = integerOrNull(node, "port");
 			portMode = textOrNull(node, "portMode");
+		}
+		if (schemaVersion >= 2) {
+			if (port == null) {
+				throw new ServiceConfigException("Campo obbligatorio 'backend.port' mancante nel file " + fileName
+						+ " (contratto v2). I plugin esistenti devono essere adeguati al contratto vigente (D25).");
+			}
+		} else {
+			if (port == null) {
+				logger.warn("{}: contratto v1 senza porta dichiarata; applicato backend con portMode 'auto' + "
+						+ "allocazione dinamica. Il plugin deve migrare al contratto v2 con backend.port dichiarato (D26/R111).",
+						fileName);
+				portMode = "auto";
+			}
 		}
 		if (portMode == null || portMode.isBlank()) {
 			portMode = (port != null) ? "fixed" : "auto";

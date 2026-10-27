@@ -186,7 +186,11 @@ public class CivilServantApplication {
 	private static String resolveBackendUri(ServiceDescriptor descriptor) {
 		ServiceConfig.BackendBlock backend = descriptor.config.backend();
 		if (backend.port() != null) {
-			return "http://" + backend.host() + ":" + backend.port();
+			String uri = "http://" + backend.host() + ":" + backend.port();
+			if (uri.contains(":8187")) {
+				throw new IllegalStateException("Route URI punta alla porta del gateway stesso: " + uri);
+			}
+			return uri;
 		}
 		return null;
 	}

@@ -13,13 +13,22 @@ Questo documento descrive lo schema `schemaVersion: 2` introdotto per il gateway
   "language": "python",                 // legacy (v1); in v2 preferire runtime.type
   "runtime": { "type": "python", "version": "3.14" },
   "route":   { "prefix": "/calibre-api", "stripPrefix": 1 },  // oppure stringa legacy
-  "backend": { "host": "127.0.0.1", "port": 8000, "portMode": "fixed" },
+  "backend": { "host": "0.0.0.0", "port": 8000, "portMode": "fixed" }, // port OBBLIGATORIO in v2, host default 0.0.0.0
   "health":  { "type": "http", "path": "/healthz", "intervalSeconds": 10, "timeoutSeconds": 3, "startupTimeoutSeconds": 90 },
   "setup":   { "script": "setup.sh", "timeoutSeconds": 300 },
   "start":   { "command": "...", "env": {}, "envFile": "plugin.env" },
   "stop":    { "timeoutSeconds": 20 }
 }
 ```
+
+## 1.1 Istruzioni di adeguamento per plugin esistenti (D25)
+
+I plugin **v1** senza `backend.port` sono ancora accettati per retrocompatibilità, ma con **`portMode: auto` + allocazione dinamica** e **WARN esplicito**. I plugin conformi al contratto vigente **devono** dichiarare:
+- `schemaVersion: 2`
+- `backend: { "host": "0.0.0.0", "port": <numero>, "portMode": "fixed"|"auto" }` (porta **obbligatoria**)
+- Se la porta dichiarata è **non valida** o **occupata** e `portMode: "fixed"`, il gateway applica **fallback a `auto`** con **WARN** (porta richiesta vs porta assegnata).
+
+I plugin `calibre-api` e `baikal-api` devono adeguarsi a questo contratto prima del rilascio.
 
 ## 2. Campi di avvio (precedenza e discordanza)
 
