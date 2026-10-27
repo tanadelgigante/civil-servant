@@ -29,7 +29,10 @@ jobs:
     needs: ci-skip-check
     if: needs.ci-skip-check.outputs.should_skip != 'true'
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        run: |
+          git clone "${{ gitea.server_url || github.server_url }}/${{ gitea.repository || github.repository }}.git" .
+          git checkout "${{ gitea.sha || github.sha }}" || git checkout -B main "${{ gitea.sha || github.sha }}"
       - name: Lint
         run: echo "lint"
 
@@ -37,7 +40,10 @@ jobs:
     runs-on: lab
     needs: lint
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        run: |
+          git clone "${{ gitea.server_url || github.server_url }}/${{ gitea.repository || github.repository }}.git" .
+          git checkout "${{ gitea.sha || github.sha }}" || git checkout -B main "${{ gitea.sha || github.sha }}"
       - name: Test
         run: echo "test"
 
@@ -46,7 +52,10 @@ jobs:
     needs: test
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'package'
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        run: |
+          git clone "${{ gitea.server_url || github.server_url }}/${{ gitea.repository || github.repository }}.git" .
+          git checkout "${{ gitea.sha || github.sha }}" || git checkout -B main "${{ gitea.sha || github.sha }}"
       - name: Package
         run: echo "package"
 
@@ -54,7 +63,10 @@ jobs:
     runs-on: lab
     needs: package
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        run: |
+          git clone "${{ gitea.server_url || github.server_url }}/${{ gitea.repository || github.repository }}.git" .
+          git checkout "${{ gitea.sha || github.sha }}" || git checkout -B main "${{ gitea.sha || github.sha }}"
       - name: Testbed
         run: echo "testbed"
 
@@ -63,7 +75,10 @@ jobs:
     needs: testbed
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'release'
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        run: |
+          git clone "${{ gitea.server_url || github.server_url }}/${{ gitea.repository || github.repository }}.git" .
+          git checkout "${{ gitea.sha || github.sha }}" || git checkout -B main "${{ gitea.sha || github.sha }}"
       - name: Release
         run: echo "release"
 
