@@ -56,8 +56,25 @@ jobs:
         run: |
           git clone "${{ gitea.server_url || github.server_url }}/${{ gitea.repository || github.repository }}.git" .
           git checkout "${{ gitea.sha || github.sha }}" || git checkout -B main "${{ gitea.sha || github.sha }}"
-      - name: Package
-        run: echo "package"
+      - name: Login to Gitea Container Registry
+        run: |
+          echo "${{ secrets.DUNGEONPAT }}" | docker login repo.kenshiro.lab.tana -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin || echo "${{ secrets.GITEA_TOKEN }}" | docker login repo.kenshiro.lab.tana -u "${{ gitea.actor }}" --password-stdin
+      - name: Build and push image
+        run: |
+          IMAGE=repo.kenshiro.lab.tana/tanadelgigante/civil-servant
+          TAG=$(cat version.ini | tr -d '[:space:]')
+          docker build -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
+          docker push ${IMAGE}:${TAG}
+          docker push ${IMAGE}:latest
+          docker inspect ${IMAGE}:${TAG} --format '{{index .RepoDigests 0}}' > image-digest.txt
+          sha256sum image-digest.txt > image-digest.sha256
+      - name: Upload checksum
+        uses: actions/upload-artifact@v3
+        with:
+          name: image-checksum
+          path: |
+            image-digest.txt
+            image-digest.sha256
 
   testbed:
     runs-on: lab
