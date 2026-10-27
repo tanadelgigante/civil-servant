@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Job to run (package|release)'
+        required: false
+        type: string
+      package_run_id:
+        description: 'Package run id for release'
+        required: false
+        type: string
+
+jobs:
+  ci-skip-check:
+    runs-on: lab
+    outputs:
+      should_skip: ${{ steps.skip.outputs.should_skip }}
+    steps:
+      - name: Check skip
+        id: skip
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then echo "should_skip=false" >> $GITHUB_OUTPUT; else echo "should_skip=false" >> $GITHUB_OUTPUT; fi
+
+  lint:
+    runs-on: lab
+    needs: ci-skip-check
+    if: needs.ci-skip-check.outputs.should_skip != 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint
+        run: echo "lint"
+
+  test:
+    runs-on: lab
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        run: echo "test"
+
+  package:
+    runs-on: lab
+    needs: test
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'package'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package
+        run: echo "package"
+
+  testbed:
+    runs-on: lab
+    needs: package
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testbed
+        run: echo "testbed"
+
+  release:
+    runs-on: lab
+    needs: testbed
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'release'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release
+        run: echo "release"
+
+  notify:
+    runs-on: lab
+    needs: [lint,test,package,testbed,release]
+    if: always()
+    steps:
+      - name: Notify
+        run: echo "notify"
