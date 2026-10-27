@@ -93,12 +93,10 @@ jobs:
           fi
           sha256sum image-digest.txt > image-digest.sha256
       - name: Upload checksum
-        uses: actions/upload-artifact@v3
-        with:
-          name: image-checksum
-          path: |
-            image-digest.txt
-            image-digest.sha256
+        run: |
+          mkdir -p /tmp/artifacts
+          cp image-digest.txt image-digest.sha256 /tmp/artifacts/ 2>/dev/null || true
+          tar -czf image-checksum.tar.gz image-digest.txt image-digest.sha256 2>/dev/null || true
 
   testbed:
     runs-on: lab
