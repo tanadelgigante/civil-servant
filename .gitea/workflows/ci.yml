@@ -70,13 +70,14 @@ jobs:
           fi
       - name: Login to Gitea Container Registry
         run: |
-          REG_USER="${{ secrets.REGISTRY_USER || secrets.DOCKERHUB_USERNAME || gitea.actor }}"
-          REG_TOKEN="${{ secrets.REGISTRY_TOKEN || secrets.DUNGEONPAT || secrets.GITEA_TOKEN }}"
-          if [ -z "$REG_TOKEN" ]; then
-            echo "Mancano REGISTRY_TOKEN/DUNGEONPAT/GITEA_TOKEN nei secrets" >&2
+          REG_USER="${{ secrets.REGISTRY_USER }}"
+          REG_TOKEN="${{ secrets.REGISTRY_TOKEN }}"
+          if [ -z "$REG_USER" ] || [ -z "$REG_TOKEN" ]; then
+            echo "ERRORE: imposta REGISTRY_USER e REGISTRY_TOKEN in Settings > Actions > Secrets" >&2
             exit 1
           fi
-          echo "$REG_TOKEN" | ${{ steps.runtime.outputs.cmd }} login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
+          CMD=${{ steps.runtime.outputs.cmd }}
+          echo "$REG_TOKEN" | $CMD login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
       - name: Build and push image
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
