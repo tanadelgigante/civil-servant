@@ -43,6 +43,28 @@ public class CivilServantApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(CivilServantApplication.class, args);
 		logger.info("Civil Servant Application started on port 8187");
+		Runtime.getRuntime().addShutdownHook(new Thread(CivilServantApplication::shutdownAllServices));
+	}
+
+	private static void shutdownAllServices() {
+		logger.info("Shutting down all plugin processes...");
+		java.util.ArrayList<ServiceDescriptor> list = new java.util.ArrayList<>(servicesRegistry.values());
+		java.util.Collections.reverse(list);
+		for (ServiceDescriptor descriptor : list) {
+			Process p = descriptor.process;
+			if (p != null && p.isAlive()) {
+				try {
+					p.destroy();
+					if (!p.waitFor(20, java.util.concurrent.TimeUnit.SECONDS)) {
+						p.destroyForcibly();
+					}
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					p.destroyForcibly();
+				}
+			}
+		}
+		logger.info("All plugin processes stopped.");
 	}
 
 	static class ServiceDescriptor {
@@ -104,11 +126,12 @@ public class CivilServantApplication {
 		try {
 			runSetupIfConfigured(descriptor);
 
-			ProcessBuilder startProcessBuilder = new ProcessBuilder("bash", "-c", descriptor.config.start().command());
-			startProcessBuilder.directory(new File(descriptor.basePath));
-			descriptor.process = startProcessBuilder.start();
-			logger.info("Started service {} with start command", descriptor.name);
-			captureOutput(descriptor.process, descriptor.name);
+		ProcessBuilder startProcessBuilder = new ProcessBuilder("bash", "-c", descriptor.config.start().command());
+		startProcessBuilder.directory(new File(descriptor.basePath));
+		startProcessBuilder.redirectErrorStream(false);
+		descriptor.process = startProcessBuilder.start();
+		logger.info("Started service {} with start command", descriptor.name);
+		captureOutput(descriptor.process, descriptor.name);
 		} catch (IOException | InterruptedException e) {
 			logger.error("Failed to start service {}: {}", descriptor.name, e.getMessage(), e);
 			throw new RuntimeException("Failed to start service: " + descriptor.name, e);
@@ -146,6 +169,13 @@ public class CivilServantApplication {
 				process.getInputStream().transferTo(System.out);
 			} catch (IOException e) {
 				logger.error("Error capturing output for service {}", serviceName, e);
+			}
+		}).start();
+		new Thread(() -> {
+			try {
+				process.getErrorStream().transferTo(System.err);
+			} catch (IOException e) {
+				logger.error("Error capturing stderr for service {}", serviceName, e);
 			}
 		}).start();
 	}
