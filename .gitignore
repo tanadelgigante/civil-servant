@@ -1,39 +1,27 @@
 # Maven
 /target/
 bin/
-*.jar.original
 
-# IDE Eclipse
+# IDE
+.idea/
+.vscode/
+*.iml
 .classpath
 .project
 .settings/
 
-# IDE IntelliJ
-.idea/
-*.iml
-
-# Editor Visual Studio Code
-.vscode/
-
-# Log e stato locale
+# Logs
 *.log
 logs/
-data/
 
-# Coverage
-coverage/
-.nyc_output/
-jacoco.exec
-site/
-
-# Node
-node_modules/
-
-# Sistema operativo
-.DS_Store
-Thumbs.db
-
-# Segreti e configurazione locale: il .env reale non va committato,
-# mentre .env.example (esempio generico, D21) si'.
+# Environment
 .env
 !.env.example
+
+# Coverage
+jacoco.exec
+*.exec
+site/
+
+# Local data
+data/
