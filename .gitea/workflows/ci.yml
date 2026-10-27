@@ -106,8 +106,58 @@ jobs:
         run: |
           git clone "${{ gitea.server_url || github.server_url }}/${{ gitea.repository || github.repository }}.git" .
           git checkout "${{ gitea.sha || github.sha }}" || git checkout -B main "${{ gitea.sha || github.sha }}"
-      - name: Testbed
-        run: echo "testbed"
+      - name: Detect container runtime
+        id: runtime
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            echo "cmd=docker" >> $GITHUB_OUTPUT
+          elif command -v podman >/dev/null 2>&1; then
+            echo "cmd=podman" >> $GITHUB_OUTPUT
+          else
+            echo "cmd=none" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+      - name: Login to Gitea Container Registry
+        run: |
+          REG_USER="${{ secrets.REPO_USER }}"
+          REG_TOKEN="${{ secrets.DUNGEONPAT }}"
+          CMD=${{ steps.runtime.outputs.cmd }}
+          echo "$REG_TOKEN" | $CMD login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
+      - name: Smoke test with docker-compose
+        run: |
+          CMD=${{ steps.runtime.outputs.cmd }}
+          IMAGE=repo.kenshiro.lab.tana/tanadelgigante/civil-servant
+          TAG=$(cat version.ini | tr -d '[:space:]')
+          cat > docker-compose.smoke.yml << 'EOF'
+          services:
+            civil-servant:
+              image: ${IMAGE}:${TAG}
+              ports:
+                - "8187:8187"
+              volumes:
+                - ./services:/app/services:ro
+                - ./config:/config:ro
+              environment:
+                - SPRING_CONFIG_LOCATION=/config/application.yml
+            hello-world:
+              image: python:3.14-slim
+              command: ["python3", "-m", "http.server", "9001", "--bind", "0.0.0.0"]
+              ports:
+                - "9001:9001"
+          EOF
+          sed -i "s|\${IMAGE}|$IMAGE|g; s|\${TAG}|$TAG|g" docker-compose.smoke.yml
+          $CMD compose -f docker-compose.smoke.yml up -d || $CMD-compose -f docker-compose.smoke.yml up -d
+          sleep 30
+          curl -f http://localhost:8187/test || (echo "gateway test failed" && $CMD compose -f docker-compose.smoke.yml logs && exit 1)
+          curl -f http://localhost:8187/hello-world/ || (echo "hello-world route failed" && $CMD compose -f docker-compose.smoke.yml logs && exit 1)
+          curl -f http://localhost:9001/ || echo "hello-world direct ok"
+          $CMD compose -f docker-compose.smoke.yml down -v
+      - name: Cleanup
+        if: always()
+        run: |
+          CMD=${{ steps.runtime.outputs.cmd }}
+          $CMD compose -f docker-compose.smoke.yml down -v 2>/dev/null || true
+          $CMD rm -f $(docker ps -aq 2>/dev/null || podman ps -aq 2>/dev/null) 2>/dev/null || true
 
   release:
     runs-on: lab
