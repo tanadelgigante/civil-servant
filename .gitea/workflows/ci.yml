@@ -70,10 +70,10 @@ jobs:
           fi
       - name: Login to Gitea Container Registry
         run: |
-          REG_USER="${{ secrets.DOCKERHUB_USERNAME }}"
+          REG_USER="${{ secrets.REPO_USER }}"
           REG_TOKEN="${{ secrets.DUNGEONPAT }}"
           if [ -z "$REG_USER" ] || [ -z "$REG_TOKEN" ]; then
-            echo "ERRORE: imposta DOCKERHUB_USERNAME e DUNGEONPAT in Settings > Actions > Secrets" >&2
+            echo "ERRORE: imposta REPO_USER e DUNGEONPAT in Settings > Actions > Secrets" >&2
             exit 1
           fi
           CMD=${{ steps.runtime.outputs.cmd }}
