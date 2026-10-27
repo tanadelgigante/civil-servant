@@ -145,7 +145,7 @@ jobs:
             PLAT="linux/amd64"
             PY="python:3.11-slim"
           fi
-          cat > docker-compose.smoke.yml << EOF
+          cat > docker-compose.smoke.yml << COMPOSE
           services:
             civil-servant:
               image: ${IMAGE}:${TAG}
@@ -157,17 +157,20 @@ jobs:
                 - ./config:/config:ro
               environment:
                 - SPRING_CONFIG_LOCATION=/config/application.yml
+                - DEBIAN_FRONTEND=noninteractive
+                - DEBCONF_NONINTERACTIVE_SEEN=true
+                - TERM=dumb
             hello-world:
               image: ${PY}
               platform: ${PLAT}
               command: ["python3", "-m", "http.server", "9001", "--bind", "0.0.0.0"]
               ports:
                 - "9001:9001"
-          EOF
+          COMPOSE
           $CMD compose -f docker-compose.smoke.yml up -d || $CMD-compose -f docker-compose.smoke.yml up -d
-          sleep 40
-          curl -f http://localhost:8187/test || (echo "gateway test failed" && $CMD compose -f docker-compose.smoke.yml logs && exit 1)
-          curl -f http://localhost:8187/hello-world/ || (echo "hello-world route failed" && $CMD compose -f docker-compose.smoke.yml logs && exit 1)
+          sleep 60
+          curl -f http://localhost:8187/test || (echo "gateway test failed" && $CMD compose -f docker-compose.smoke.yml logs civil-servant && exit 1)
+          curl -f http://localhost:8187/hello-world/ || (echo "hello-world route failed" && $CMD compose -f docker-compose.smoke.yml logs civil-servant && exit 1)
           curl -f http://localhost:9001/ || echo "hello-world direct ok"
           $CMD compose -f docker-compose.smoke.yml down -v
       - name: Cleanup
