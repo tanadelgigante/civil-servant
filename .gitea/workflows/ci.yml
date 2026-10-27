@@ -56,17 +56,40 @@ jobs:
         run: |
           git clone "${{ gitea.server_url || github.server_url }}/${{ gitea.repository || github.repository }}.git" .
           git checkout "${{ gitea.sha || github.sha }}" || git checkout -B main "${{ gitea.sha || github.sha }}"
+      - name: Detect container runtime
+        id: runtime
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            echo "cmd=docker" >> $GITHUB_OUTPUT
+          elif command -v podman >/dev/null 2>&1; then
+            echo "cmd=podman" >> $GITHUB_OUTPUT
+          else
+            echo "cmd=none" >> $GITHUB_OUTPUT
+            echo "Nessun runtime trovato: serve docker o podman sul runner lab" >&2
+            exit 1
+          fi
       - name: Login to Gitea Container Registry
         run: |
-          echo "${{ secrets.DUNGEONPAT }}" | docker login repo.kenshiro.lab.tana -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin || echo "${{ secrets.GITEA_TOKEN }}" | docker login repo.kenshiro.lab.tana -u "${{ gitea.actor }}" --password-stdin
+          REG_USER="${{ secrets.REGISTRY_USER || secrets.DOCKERHUB_USERNAME || gitea.actor }}"
+          REG_TOKEN="${{ secrets.REGISTRY_TOKEN || secrets.DUNGEONPAT || secrets.GITEA_TOKEN }}"
+          if [ -z "$REG_TOKEN" ]; then
+            echo "Mancano REGISTRY_TOKEN/DUNGEONPAT/GITEA_TOKEN nei secrets" >&2
+            exit 1
+          fi
+          echo "$REG_TOKEN" | ${{ steps.runtime.outputs.cmd }} login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
       - name: Build and push image
         run: |
+          CMD=${{ steps.runtime.outputs.cmd }}
           IMAGE=repo.kenshiro.lab.tana/tanadelgigante/civil-servant
           TAG=$(cat version.ini | tr -d '[:space:]')
-          docker build -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
-          docker push ${IMAGE}:${TAG}
-          docker push ${IMAGE}:latest
-          docker inspect ${IMAGE}:${TAG} --format '{{index .RepoDigests 0}}' > image-digest.txt
+          $CMD build -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
+          $CMD push ${IMAGE}:${TAG}
+          $CMD push ${IMAGE}:latest
+          if [ "$CMD" = "docker" ]; then
+            $CMD inspect ${IMAGE}:${TAG} --format '{{index .RepoDigests 0}}' > image-digest.txt 2>/dev/null || $CMD inspect ${IMAGE}:${TAG} --format '{{.RepoDigests}}' > image-digest.txt
+          else
+            $CMD inspect ${IMAGE}:${TAG} --format '{{.Digest}}' > image-digest.txt
+          fi
           sha256sum image-digest.txt > image-digest.sha256
       - name: Upload checksum
         uses: actions/upload-artifact@v3
