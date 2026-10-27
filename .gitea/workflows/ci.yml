@@ -83,12 +83,15 @@ jobs:
           CMD=${{ steps.runtime.outputs.cmd }}
           IMAGE=repo.kenshiro.lab.tana/tanadelgigante/civil-servant
           TAG=$(cat version.ini | tr -d '[:space:]')
-          $CMD build -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
-          $CMD push ${IMAGE}:${TAG}
-          $CMD push ${IMAGE}:latest
           if [ "$CMD" = "docker" ]; then
+            $CMD build --platform=linux/amd64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
+            $CMD push ${IMAGE}:${TAG}
+            $CMD push ${IMAGE}:latest
             $CMD inspect ${IMAGE}:${TAG} --format '{{index .RepoDigests 0}}' > image-digest.txt 2>/dev/null || $CMD inspect ${IMAGE}:${TAG} --format '{{.RepoDigests}}' > image-digest.txt
           else
+            $CMD build --platform=linux/amd64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
+            $CMD push ${IMAGE}:${TAG}
+            $CMD push ${IMAGE}:latest
             $CMD inspect ${IMAGE}:${TAG} --format '{{.Digest}}' > image-digest.txt
           fi
           sha256sum image-digest.txt > image-digest.sha256
@@ -128,10 +131,11 @@ jobs:
           CMD=${{ steps.runtime.outputs.cmd }}
           IMAGE=repo.kenshiro.lab.tana/tanadelgigante/civil-servant
           TAG=$(cat version.ini | tr -d '[:space:]')
-          cat > docker-compose.smoke.yml << 'EOF'
+          cat > docker-compose.smoke.yml << EOF
           services:
             civil-servant:
               image: ${IMAGE}:${TAG}
+              platform: linux/amd64
               ports:
                 - "8187:8187"
               volumes:
@@ -140,14 +144,14 @@ jobs:
               environment:
                 - SPRING_CONFIG_LOCATION=/config/application.yml
             hello-world:
-              image: python:3.14-slim
+              image: python:3.11-slim
+              platform: linux/amd64
               command: ["python3", "-m", "http.server", "9001", "--bind", "0.0.0.0"]
               ports:
                 - "9001:9001"
           EOF
-          sed -i "s|\${IMAGE}|$IMAGE|g; s|\${TAG}|$TAG|g" docker-compose.smoke.yml
           $CMD compose -f docker-compose.smoke.yml up -d || $CMD-compose -f docker-compose.smoke.yml up -d
-          sleep 30
+          sleep 40
           curl -f http://localhost:8187/test || (echo "gateway test failed" && $CMD compose -f docker-compose.smoke.yml logs && exit 1)
           curl -f http://localhost:8187/hello-world/ || (echo "hello-world route failed" && $CMD compose -f docker-compose.smoke.yml logs && exit 1)
           curl -f http://localhost:9001/ || echo "hello-world direct ok"
