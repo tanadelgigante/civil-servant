@@ -83,13 +83,19 @@ jobs:
           CMD=${{ steps.runtime.outputs.cmd }}
           IMAGE=repo.kenshiro.lab.tana/tanadelgigante/civil-servant
           TAG=$(cat version.ini | tr -d '[:space:]')
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+            PLAT="linux/arm64"
+          else
+            PLAT="linux/amd64"
+          fi
           if [ "$CMD" = "docker" ]; then
-            $CMD build --platform=linux/amd64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
+            $CMD build --platform=$PLAT -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
             $CMD push ${IMAGE}:${TAG}
             $CMD push ${IMAGE}:latest
             $CMD inspect ${IMAGE}:${TAG} --format '{{index .RepoDigests 0}}' > image-digest.txt 2>/dev/null || $CMD inspect ${IMAGE}:${TAG} --format '{{.RepoDigests}}' > image-digest.txt
           else
-            $CMD build --platform=linux/amd64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
+            $CMD build --platform=$PLAT -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
             $CMD push ${IMAGE}:${TAG}
             $CMD push ${IMAGE}:latest
             $CMD inspect ${IMAGE}:${TAG} --format '{{.Digest}}' > image-digest.txt
@@ -131,11 +137,19 @@ jobs:
           CMD=${{ steps.runtime.outputs.cmd }}
           IMAGE=repo.kenshiro.lab.tana/tanadelgigante/civil-servant
           TAG=$(cat version.ini | tr -d '[:space:]')
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+            PLAT="linux/arm64"
+            PY="python:3.11-slim"
+          else
+            PLAT="linux/amd64"
+            PY="python:3.11-slim"
+          fi
           cat > docker-compose.smoke.yml << EOF
           services:
             civil-servant:
               image: ${IMAGE}:${TAG}
-              platform: linux/amd64
+              platform: ${PLAT}
               ports:
                 - "8187:8187"
               volumes:
@@ -144,8 +158,8 @@ jobs:
               environment:
                 - SPRING_CONFIG_LOCATION=/config/application.yml
             hello-world:
-              image: python:3.11-slim
-              platform: linux/amd64
+              image: ${PY}
+              platform: ${PLAT}
               command: ["python3", "-m", "http.server", "9001", "--bind", "0.0.0.0"]
               ports:
                 - "9001:9001"
