@@ -83,7 +83,8 @@ jobs:
           CMD=${{ steps.runtime.outputs.cmd }}
           if [ "$CMD" = "docker" ]; then
             docker run --privileged --rm tonistiigi/binfmt --install all || true
-            docker buildx create --use --name multiarch-builder 2>/dev/null || docker buildx use multiarch-builder 2>/dev/null || true
+            docker buildx create --use --name multiarch-builder --driver docker-container --driver-opt network=host 2>/dev/null || docker buildx create --use --name multiarch-builder --driver-opt network=host 2>/dev/null || docker buildx use multiarch-builder 2>/dev/null || true
+            docker buildx inspect --bootstrap 2>/dev/null || true
           fi
       - name: Build and push image
         run: |
@@ -91,8 +92,8 @@ jobs:
           IMAGE=repo.kenshiro.lab.tana/tanadelgigante/civil-servant
           TAG=$(cat version.ini | tr -d '[:space:]')
           if [ "$CMD" = "docker" ] && docker buildx version >/dev/null 2>&1; then
-            docker buildx build --platform linux/amd64,linux/arm64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest --push .
-            docker buildx imagetools inspect ${IMAGE}:${TAG} --format '{{json .Manifest}}' 2>/dev/null | grep -o '"digest":"[^"]*"' | head -1 | cut -d'"' -f4 | sed 's/^/sha256:/' > image-digest.txt || echo "${IMAGE}:${TAG}" > image-digest.txt
+            docker buildx build --builder multiarch-builder --network=host --platform linux/amd64,linux/arm64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest --push .
+            docker buildx imagetools inspect ${IMAGE}:${TAG} 2>/dev/null | grep -oP 'Digest: \Ksha256:[a-f0-9]+' | head -1 > image-digest.txt || echo "${IMAGE}:${TAG}" > image-digest.txt
           else
             ARCH=$(uname -m)
             if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
@@ -100,7 +101,7 @@ jobs:
             else
               PLAT="linux/amd64"
             fi
-            $CMD build --platform=$PLAT -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
+            $CMD build --network=host --platform=$PLAT -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
             $CMD push ${IMAGE}:${TAG}
             $CMD push ${IMAGE}:latest
             if [ "$CMD" = "docker" ]; then
@@ -234,3 +235,4 @@ jobs:
     steps:
       - name: Notify
         run: echo "notify"
+
