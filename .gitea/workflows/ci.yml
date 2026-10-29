@@ -115,12 +115,15 @@ jobs:
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
           if [ "$CMD" = "docker" ]; then
-            rm -rf /root/.docker 2>/dev/null || true
+            unset DOCKER_HOST DOCKER_TLS_VERIFY DOCKER_CERT_PATH
+            rm -rf /root/.docker/context /root/.docker/ca.pem /root/.docker/cert.pem /root/.docker/key.pem 2>/dev/null || true
             mkdir -p /root/.docker
             echo '{"auths":{}}' > /root/.docker/config.json
+            docker context use default 2>/dev/null || true
+            docker context rm $(docker context ls --format '{{.Name}}' 2>/dev/null | grep -v default) 2>/dev/null || true
             docker run --privileged --rm tonistiigi/binfmt --install all || true
             docker buildx rm multiarch-builder 2>/dev/null || true
-            docker buildx create --use --name multiarch-builder --driver docker-container --driver-opt network=host 2>/dev/null || docker buildx create --use --name multiarch-builder --driver-opt network=host 2>/dev/null || docker buildx use multiarch-builder 2>/dev/null || true
+            docker buildx create --use --name multiarch-builder --driver docker --driver-opt network=host 2>/dev/null || docker buildx create --use --name multiarch-builder --driver docker 2>/dev/null || docker buildx create --use --name multiarch-builder 2>/dev/null || true
             docker buildx inspect --bootstrap 2>/dev/null || true
           fi
       - name: Build and push image
@@ -130,9 +133,11 @@ jobs:
           TAG=$(cat version.ini | tr -d '[:space:]')
           export DOCKER_BUILDKIT=1
           export BUILDAH_FORMAT=docker
-          export DOCKER_TLS_VERIFY=0
           export DOCKER_CONFIG=/root/.docker
+          export DOCKER_HOST=unix:///var/run/docker.sock
+          unset DOCKER_TLS_VERIFY DOCKER_CERT_PATH
           if [ "$CMD" = "docker" ] && docker buildx version >/dev/null 2>&1; then
+            docker context use default 2>/dev/null || true
             docker buildx build --builder multiarch-builder --network=host --platform linux/amd64,linux/arm64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest --push .
             docker buildx imagetools inspect ${IMAGE}:${TAG} 2>/dev/null | grep -oP 'Digest: \Ksha256:[a-f0-9]+' | head -1 > image-digest.txt || echo "${IMAGE}:${TAG}" > image-digest.txt
           else
