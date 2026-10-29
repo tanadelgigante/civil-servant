@@ -78,27 +78,36 @@ jobs:
           fi
           CMD=${{ steps.runtime.outputs.cmd }}
           echo "$REG_TOKEN" | $CMD login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
+      - name: Setup buildx
+        run: |
+          CMD=${{ steps.runtime.outputs.cmd }}
+          if [ "$CMD" = "docker" ]; then
+            docker run --privileged --rm tonistiigi/binfmt --install all || true
+            docker buildx create --use --name multiarch-builder 2>/dev/null || docker buildx use multiarch-builder 2>/dev/null || true
+          fi
       - name: Build and push image
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
           IMAGE=repo.kenshiro.lab.tana/tanadelgigante/civil-servant
           TAG=$(cat version.ini | tr -d '[:space:]')
-          ARCH=$(uname -m)
-          if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-            PLAT="linux/arm64"
+          if [ "$CMD" = "docker" ] && docker buildx version >/dev/null 2>&1; then
+            docker buildx build --platform linux/amd64,linux/arm64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest --push .
+            docker buildx imagetools inspect ${IMAGE}:${TAG} --format '{{json .Manifest}}' 2>/dev/null | grep -o '"digest":"[^"]*"' | head -1 | cut -d'"' -f4 | sed 's/^/sha256:/' > image-digest.txt || echo "${IMAGE}:${TAG}" > image-digest.txt
           else
-            PLAT="linux/amd64"
-          fi
-          if [ "$CMD" = "docker" ]; then
+            ARCH=$(uname -m)
+            if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+              PLAT="linux/arm64"
+            else
+              PLAT="linux/amd64"
+            fi
             $CMD build --platform=$PLAT -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
             $CMD push ${IMAGE}:${TAG}
             $CMD push ${IMAGE}:latest
-            $CMD inspect ${IMAGE}:${TAG} --format '{{index .RepoDigests 0}}' > image-digest.txt 2>/dev/null || $CMD inspect ${IMAGE}:${TAG} --format '{{.RepoDigests}}' > image-digest.txt
-          else
-            $CMD build --platform=$PLAT -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
-            $CMD push ${IMAGE}:${TAG}
-            $CMD push ${IMAGE}:latest
-            $CMD inspect ${IMAGE}:${TAG} --format '{{.Digest}}' > image-digest.txt
+            if [ "$CMD" = "docker" ]; then
+              $CMD inspect ${IMAGE}:${TAG} --format '{{index .RepoDigests 0}}' > image-digest.txt 2>/dev/null || $CMD inspect ${IMAGE}:${TAG} --format '{{.RepoDigests}}' > image-digest.txt
+            else
+              $CMD inspect ${IMAGE}:${TAG} --format '{{.Digest}}' > image-digest.txt
+            fi
           fi
           sha256sum image-digest.txt > image-digest.sha256
       - name: Upload checksum
@@ -137,14 +146,6 @@ jobs:
           CMD=${{ steps.runtime.outputs.cmd }}
           IMAGE=repo.kenshiro.lab.tana/tanadelgigante/civil-servant
           TAG=$(cat version.ini | tr -d '[:space:]')
-          ARCH=$(uname -m)
-          if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-            PLAT="linux/arm64"
-            PY="python:3.11-slim"
-          else
-            PLAT="linux/amd64"
-            PY="python:3.11-slim"
-          fi
           mkdir -p services/hello-world
           cat > services/hello-world/service-config.json << EOF
           {
@@ -154,7 +155,7 @@ jobs:
             "description": "Hello World example plugin",
             "runtime": {
               "type": "python",
-              "version": "3.14"
+              "version": "3.11"
             },
             "route": {
               "prefix": "/hello-world",
@@ -186,7 +187,6 @@ jobs:
           services:
             civil-servant:
               image: ${IMAGE}:${TAG}
-              platform: ${PLAT}
               ports:
                 - "8187:8187"
               volumes:
@@ -200,8 +200,7 @@ jobs:
               depends_on:
                 - hello-world
             hello-world:
-              image: ${PY}
-              platform: ${PLAT}
+              image: python:3.11-slim
               command: ["python3", "-m", "http.server", "9001", "--bind", "0.0.0.0"]
           COMPOSE
           $CMD compose -f docker-compose.smoke.yml up -d || $CMD-compose -f docker-compose.smoke.yml up -d
