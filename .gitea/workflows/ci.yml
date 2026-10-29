@@ -114,25 +114,23 @@ jobs:
       - name: Setup buildx
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
+          echo "192.168.188.110 repo.kenshiro.lab.tana" >> /etc/hosts
           if [ "$CMD" = "docker" ]; then
             unset DOCKER_HOST DOCKER_TLS_VERIFY DOCKER_CERT_PATH
             rm -rf /root/.docker/context /root/.docker/ca.pem /root/.docker/cert.pem /root/.docker/key.pem 2>/dev/null || true
             mkdir -p /root/.docker
             echo '{"auths":{}}' > /root/.docker/config.json
-            # Forza DNS interno
-            echo "nameserver $(grep nameserver /etc/resolv.conf | head -1 | awk '{print $2}')" > /etc/resolv.conf.buildx 2>/dev/null || true
-            cp /etc/resolv.conf /etc/resolv.conf.bak 2>/dev/null || true
-            grep -v '^nameserver 8.8' /etc/resolv.conf.bak > /etc/resolv.conf 2>/dev/null || true
             docker context use default 2>/dev/null || true
             docker context rm $(docker context ls --format '{{.Name}}' 2>/dev/null | grep -v default) 2>/dev/null || true
             docker run --privileged --rm --network=host tonistiigi/binfmt --install all || true
             docker buildx rm multiarch-builder 2>/dev/null || true
-            docker buildx create --use --name multiarch-builder --driver docker-container --buildkitd-flags '--allow-insecure-entitlement network.host' 2>/dev/null || docker buildx create --use --name multiarch-builder --driver docker-container --driver-opt network=host 2>/dev/null || docker buildx create --use --name multiarch-builder --driver docker 2>/dev/null || true
+            docker buildx create --use --name multiarch-builder --driver docker --driver-opt network=host 2>/dev/null || docker buildx create --use --name multiarch-builder --driver docker-container --driver-opt network=host 2>/dev/null || true
             docker buildx inspect --bootstrap 2>/dev/null || true
           fi
       - name: Build and push image
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
+          echo "192.168.188.110 repo.kenshiro.lab.tana" >> /etc/hosts
           IMAGE=repo.kenshiro.lab.tana/tanadelgigante/civil-servant
           TAG=$(cat version.ini | tr -d '[:space:]')
           export DOCKER_BUILDKIT=1
@@ -140,10 +138,9 @@ jobs:
           export DOCKER_CONFIG=/root/.docker
           export DOCKER_HOST=unix:///var/run/docker.sock
           unset DOCKER_TLS_VERIFY DOCKER_CERT_PATH
-          grep -v '^nameserver 8.8' /etc/resolv.conf.bak 2>/dev/null > /etc/resolv.conf || true
           if [ "$CMD" = "docker" ] && docker buildx version >/dev/null 2>&1; then
             docker context use default 2>/dev/null || true
-            docker buildx build --builder multiarch-builder --network=host --platform linux/amd64,linux/arm64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest --push .
+            docker buildx build --builder multiarch-builder --network=host --add-host=repo.kenshiro.lab.tana:192.168.188.110 --platform linux/amd64,linux/arm64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest --push .
             docker buildx imagetools inspect ${IMAGE}:${TAG} 2>/dev/null | grep -oP 'Digest: \Ksha256:[a-f0-9]+' | head -1 > image-digest.txt || echo "${IMAGE}:${TAG}" > image-digest.txt
           else
             ARCH=$(uname -m)
@@ -152,7 +149,7 @@ jobs:
             else
               PLAT="linux/amd64"
             fi
-            $CMD build --network=host --tls-verify=false --platform=$PLAT -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
+            $CMD build --network=host --add-host=repo.kenshiro.lab.tana:192.168.188.110 --tls-verify=false --platform=$PLAT -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
             $CMD push --tls-verify=false ${IMAGE}:${TAG}
             $CMD push --tls-verify=false ${IMAGE}:latest
             if [ "$CMD" = "docker" ]; then
