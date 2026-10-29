@@ -113,7 +113,7 @@ jobs:
           export DOCKER_BUILDKIT=1
           export BUILDAH_FORMAT=docker
           if [ "$CMD" = "docker" ] && docker buildx version >/dev/null 2>&1; then
-            docker buildx build --builder multiarch-builder --network=host --allow security.insecure --insecure --platform linux/amd64,linux/arm64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest --push .
+            DOCKER_TLS_VERIFY=0 docker buildx build --builder multiarch-builder --network=host --platform linux/amd64,linux/arm64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest --push .
             docker buildx imagetools inspect ${IMAGE}:${TAG} 2>/dev/null | grep -oP 'Digest: \Ksha256:[a-f0-9]+' | head -1 > image-digest.txt || echo "${IMAGE}:${TAG}" > image-digest.txt
           else
             ARCH=$(uname -m)
