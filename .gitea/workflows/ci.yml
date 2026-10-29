@@ -145,6 +145,43 @@ jobs:
             PLAT="linux/amd64"
             PY="python:3.11-slim"
           fi
+          mkdir -p services/hello-world
+          cat > services/hello-world/service-config.json << EOF
+          {
+            "schemaVersion": 2,
+            "name": "hello-world",
+            "version": "1.0.0",
+            "description": "Hello World example plugin",
+            "runtime": {
+              "type": "python",
+              "version": "3.14"
+            },
+            "route": {
+              "prefix": "/hello-world",
+              "stripPrefix": 1
+            },
+            "backend": {
+              "host": "hello-world",
+              "port": 9001,
+              "portMode": "fixed"
+            },
+            "health": {
+              "type": "process",
+              "intervalSeconds": 10,
+              "timeoutSeconds": 3,
+              "startupTimeoutSeconds": 90
+            },
+            "setup": {
+              "script": null
+            },
+            "start": {
+              "command": "python3 -m http.server 9001 --bind 0.0.0.0"
+            },
+            "stop": {
+              "timeoutSeconds": 20
+            }
+          }
+          EOF
           cat > docker-compose.smoke.yml << COMPOSE
           services:
             civil-servant:
@@ -160,18 +197,17 @@ jobs:
                 - DEBIAN_FRONTEND=noninteractive
                 - DEBCONF_NONINTERACTIVE_SEEN=true
                 - TERM=dumb
+              depends_on:
+                - hello-world
             hello-world:
               image: ${PY}
               platform: ${PLAT}
               command: ["python3", "-m", "http.server", "9001", "--bind", "0.0.0.0"]
-              ports:
-                - "9001:9001"
           COMPOSE
           $CMD compose -f docker-compose.smoke.yml up -d || $CMD-compose -f docker-compose.smoke.yml up -d
-          sleep 60
+          sleep 90
           curl -f http://localhost:8187/test || (echo "gateway test failed" && $CMD compose -f docker-compose.smoke.yml logs civil-servant && exit 1)
-          curl -f http://localhost:8187/hello-world/ || (echo "hello-world route failed" && $CMD compose -f docker-compose.smoke.yml logs civil-servant && exit 1)
-          curl -f http://localhost:9001/ || echo "hello-world direct ok"
+          curl -f http://localhost:8187/hello-world/ || (echo "hello-world route failed" && $CMD compose -f docker-compose.smoke.yml logs civil-servant && $CMD compose -f docker-compose.smoke.yml logs hello-world && exit 1)
           $CMD compose -f docker-compose.smoke.yml down -v
       - name: Cleanup
         if: always()
