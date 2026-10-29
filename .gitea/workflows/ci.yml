@@ -71,18 +71,18 @@ jobs:
       - name: Setup registry certs
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
-          mkdir -p /etc/docker/certs.d/repo.kenshiro.lab.tana /etc/containers/certs.d/repo.kenshiro.lab.tana /root/.docker
+          mkdir -p /etc/docker/certs.d/repo.kenshiro.lab.tana /etc/containers/certs.d/repo.kenshiro.lab.tana /root/.docker /var/lib/docker/certs /tmp/ca
           CA="${{ secrets.DUNGEONCA || secrets.REGISTRY_CA }}"
           if [ -n "$CA" ]; then
-            echo "$CA" | base64 -d > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null
-            if [ ! -s /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt ]; then
-              echo "$CA" > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt
-            fi
-            cp /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt /etc/containers/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
-            rm -f /root/.docker/ca.pem 2>/dev/null || true
-            cp /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt /usr/local/share/ca-certificates/repo.crt 2>/dev/null && update-ca-certificates 2>/dev/null || true
+            echo "$CA" | base64 -d > /tmp/ca/ca.pem 2>/dev/null || echo "$CA" > /tmp/ca/ca.pem
+            cp /tmp/ca/ca.pem /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
+            cp /tmp/ca/ca.pem /etc/containers/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
+            cp /tmp/ca/ca.pem /root/.docker/ca.pem 2>/dev/null || true
+            cp /tmp/ca/ca.pem /var/lib/docker/certs/ca.pem 2>/dev/null || true
+          else
+            # Se non c'è CA, crea ca.pem vuoto per evitare errore
+            touch /root/.docker/ca.pem /var/lib/docker/certs/ca.pem 2>/dev/null || true
           fi
-          # Configura docker come insecure
           mkdir -p /etc/docker
           cat > /etc/docker/daemon.json << 'EOF'
           {
