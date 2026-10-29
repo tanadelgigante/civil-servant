@@ -68,6 +68,21 @@ jobs:
             echo "Nessun runtime trovato: serve docker o podman sul runner lab" >&2
             exit 1
           fi
+      - name: Setup registry certs
+        run: |
+          mkdir -p /etc/docker/certs.d/repo.kenshiro.lab.tana /etc/containers/certs.d/repo.kenshiro.lab.tana
+          if [ -n "${{ secrets.REGISTRY_CA }}" ]; then
+            echo "${{ secrets.REGISTRY_CA }}" | base64 -d > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || echo "${{ secrets.REGISTRY_CA }}" > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt
+            cp /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt /etc/containers/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
+          fi
+          if [ "${{ steps.runtime.outputs.cmd }}" = "podman" ]; then
+            mkdir -p ~/.config/containers/registries.conf.d
+            cat > ~/.config/containers/registries.conf.d/lab.conf << 'EOF'
+          [[registry]]
+          location = "repo.kenshiro.lab.tana"
+          insecure = true
+          EOF
+          fi
       - name: Login to Gitea Container Registry
         run: |
           REG_USER="${{ secrets.REPO_USER }}"
@@ -77,10 +92,14 @@ jobs:
             exit 1
           fi
           CMD=${{ steps.runtime.outputs.cmd }}
-          echo "$REG_TOKEN" | $CMD login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
+          echo "$REG_TOKEN" | $CMD login --tls-verify=false repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
       - name: Setup buildx
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
+          mkdir -p /etc/docker/certs.d/repo.kenshiro.lab.tana
+          if [ -n "${{ secrets.REGISTRY_CA }}" ]; then
+            echo "${{ secrets.REGISTRY_CA }}" | base64 -d > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || echo "${{ secrets.REGISTRY_CA }}" > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt
+          fi
           if [ "$CMD" = "docker" ]; then
             docker run --privileged --rm tonistiigi/binfmt --install all || true
             docker buildx create --use --name multiarch-builder --driver docker-container --driver-opt network=host 2>/dev/null || docker buildx create --use --name multiarch-builder --driver-opt network=host 2>/dev/null || docker buildx use multiarch-builder 2>/dev/null || true
@@ -91,8 +110,10 @@ jobs:
           CMD=${{ steps.runtime.outputs.cmd }}
           IMAGE=repo.kenshiro.lab.tana/tanadelgigante/civil-servant
           TAG=$(cat version.ini | tr -d '[:space:]')
+          export DOCKER_BUILDKIT=1
+          export BUILDAH_FORMAT=docker
           if [ "$CMD" = "docker" ] && docker buildx version >/dev/null 2>&1; then
-            docker buildx build --builder multiarch-builder --network=host --platform linux/amd64,linux/arm64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest --push .
+            docker buildx build --builder multiarch-builder --network=host --allow security.insecure --insecure --platform linux/amd64,linux/arm64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest --push .
             docker buildx imagetools inspect ${IMAGE}:${TAG} 2>/dev/null | grep -oP 'Digest: \Ksha256:[a-f0-9]+' | head -1 > image-digest.txt || echo "${IMAGE}:${TAG}" > image-digest.txt
           else
             ARCH=$(uname -m)
@@ -101,9 +122,9 @@ jobs:
             else
               PLAT="linux/amd64"
             fi
-            $CMD build --network=host --platform=$PLAT -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
-            $CMD push ${IMAGE}:${TAG}
-            $CMD push ${IMAGE}:latest
+            $CMD build --network=host --tls-verify=false --platform=$PLAT -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
+            $CMD push --tls-verify=false ${IMAGE}:${TAG}
+            $CMD push --tls-verify=false ${IMAGE}:latest
             if [ "$CMD" = "docker" ]; then
               $CMD inspect ${IMAGE}:${TAG} --format '{{index .RepoDigests 0}}' > image-digest.txt 2>/dev/null || $CMD inspect ${IMAGE}:${TAG} --format '{{.RepoDigests}}' > image-digest.txt
             else
