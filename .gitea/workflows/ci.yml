@@ -79,7 +79,7 @@ jobs:
               echo "$CA" > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt
             fi
             cp /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt /etc/containers/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
-            cp /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt /root/.docker/ca.pem 2>/dev/null || true
+            rm -f /root/.docker/ca.pem 2>/dev/null || true
             cp /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt /usr/local/share/ca-certificates/repo.crt 2>/dev/null && update-ca-certificates 2>/dev/null || true
           fi
           # Configura docker come insecure
