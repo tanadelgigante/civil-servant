@@ -70,10 +70,21 @@ jobs:
           fi
       - name: Setup registry certs
         run: |
-          mkdir -p /etc/docker/certs.d/repo.kenshiro.lab.tana /etc/containers/certs.d/repo.kenshiro.lab.tana
-          if [ -n "${{ secrets.REGISTRY_CA }}" ]; then
-            echo "${{ secrets.REGISTRY_CA }}" | base64 -d > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || echo "${{ secrets.REGISTRY_CA }}" > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt
+          mkdir -p /etc/docker/certs.d/repo.kenshiro.lab.tana /etc/containers/certs.d/repo.kenshiro.lab.tana /root/.docker
+          CA="${{ secrets.DUNGEONCA || secrets.REGISTRY_CA }}"
+          if [ -n "$CA" ]; then
+            echo "$CA" | base64 -d > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || echo "$CA" > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt
             cp /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt /etc/containers/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
+            cp /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt /root/.docker/ca.pem 2>/dev/null || true
+            cp /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt /usr/local/share/ca-certificates/repo.kenshiro.lab.tana.crt 2>/dev/null && update-ca-certificates 2>/dev/null || true
+          else
+            # Fallback: crea config docker con tls verify disabilitato
+            mkdir -p /etc/docker
+            cat > /etc/docker/daemon.json << 'EOF'
+          {
+            "insecure-registries": ["repo.kenshiro.lab.tana"]
+          }
+          EOF
           fi
           if [ "${{ steps.runtime.outputs.cmd }}" = "podman" ]; then
             mkdir -p ~/.config/containers/registries.conf.d
@@ -92,13 +103,16 @@ jobs:
             exit 1
           fi
           CMD=${{ steps.runtime.outputs.cmd }}
-          echo "$REG_TOKEN" | $CMD login --tls-verify=false repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
+          echo "$REG_TOKEN" | $CMD login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login --tls-verify=false repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
       - name: Setup buildx
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
-          mkdir -p /etc/docker/certs.d/repo.kenshiro.lab.tana
-          if [ -n "${{ secrets.REGISTRY_CA }}" ]; then
-            echo "${{ secrets.REGISTRY_CA }}" | base64 -d > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || echo "${{ secrets.REGISTRY_CA }}" > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt
+          mkdir -p /etc/docker/certs.d/repo.kenshiro.lab.tana /root/.docker
+          CA="${{ secrets.DUNGEONCA || secrets.REGISTRY_CA }}"
+          if [ -n "$CA" ]; then
+            echo "$CA" | base64 -d > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || echo "$CA" > /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt
+            cp /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt /root/.docker/ca.pem 2>/dev/null || true
+            cp /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt /usr/local/share/ca-certificates/repo.crt 2>/dev/null && update-ca-certificates 2>/dev/null || true
           fi
           if [ "$CMD" = "docker" ]; then
             docker run --privileged --rm tonistiigi/binfmt --install all || true
