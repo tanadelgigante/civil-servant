@@ -114,7 +114,7 @@ jobs:
           echo "192.168.188.110 repo.kenshiro.lab.tana" >> /etc/hosts
           CA="${{ secrets.DUNGEONCA || secrets.REGISTRY_CA }}"
           if [ -n "$CA" ]; then
-            mkdir -p /tmp/certs /root/.docker /var/lib/docker
+            mkdir -p /tmp/certs /root/.docker
             echo "$CA" | base64 -d > /tmp/certs/repo.crt 2>/dev/null || echo "$CA" > /tmp/certs/repo.crt
             mkdir -p /etc/docker/certs.d/repo.kenshiro.lab.tana
             cp /tmp/certs/repo.crt /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
@@ -122,6 +122,7 @@ jobs:
             cp /tmp/certs/repo.crt /etc/containers/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
             cp /tmp/certs/repo.crt /root/.docker/ca.pem 2>/dev/null || true
           fi
+          [ -f /root/.docker/ca.pem ] || touch /root/.docker/ca.pem 2>/dev/null || true
           if [ "$CMD" = "docker" ]; then
             unset DOCKER_HOST DOCKER_TLS_VERIFY DOCKER_CERT_PATH
             rm -rf /root/.docker/context 2>/dev/null || true
