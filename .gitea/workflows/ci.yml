@@ -71,7 +71,7 @@ jobs:
       - name: Setup registry certs
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
-          mkdir -p /etc/docker/certs.d/repo.kenshiro.lab.tana /etc/containers/certs.d/repo.kenshiro.lab.tana /root/.docker /var/lib/docker/certs /tmp/ca
+          mkdir -p /etc/docker/certs.d/repo.kenshiro.lab.tana /etc/containers/certs.d/repo.kenshiro.lab.tana /root/.docker /tmp/ca
           CA="${{ secrets.DUNGEONCA || secrets.REGISTRY_CA }}"
           if [ -n "$CA" ]; then
             echo "$CA" | base64 -d > /tmp/ca/ca.pem 2>/dev/null || echo "$CA" > /tmp/ca/ca.pem
