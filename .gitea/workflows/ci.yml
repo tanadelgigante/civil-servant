@@ -80,7 +80,7 @@ jobs:
             cp /tmp/ca/ca.pem /root/.docker/ca.pem 2>/dev/null || true
             cp /tmp/ca/ca.pem /var/lib/docker/certs/ca.pem 2>/dev/null || true
           fi
-          touch /root/.docker/ca.pem /var/lib/docker/certs/ca.pem 2>/dev/null || true
+          touch /root/.docker/ca.pem 2>/dev/null || true
           mkdir -p /etc/docker
           cat > /etc/docker/daemon.json << 'EOF'
           {
