@@ -78,7 +78,6 @@ jobs:
             cp /tmp/ca/ca.pem /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
             cp /tmp/ca/ca.pem /etc/containers/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
             cp /tmp/ca/ca.pem /root/.docker/ca.pem 2>/dev/null || true
-            cp /tmp/ca/ca.pem /var/lib/docker/certs/ca.pem 2>/dev/null || true
           fi
           touch /root/.docker/ca.pem 2>/dev/null || true
           mkdir -p /etc/docker
