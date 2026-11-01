@@ -71,19 +71,22 @@ jobs:
       - name: Setup registry certs
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
-          mkdir -p /etc/docker/certs.d/repo.kenshiro.lab.tana /etc/containers/certs.d/repo.kenshiro.lab.tana /root/.docker /tmp/ca
+          REG_HOST="repo.kenshiro.lab.tana"
+          REG_IP="192.168.188.110:30080"
+          echo "192.168.188.110 repo.kenshiro.lab.tana" >> /etc/hosts
+          mkdir -p /etc/docker/certs.d/${REG_HOST} /etc/containers/certs.d/${REG_HOST} /root/.docker /tmp/ca
           CA="${{ secrets.DUNGEONCA || secrets.REGISTRY_CA }}"
           if [ -n "$CA" ]; then
             echo "$CA" | base64 -d > /tmp/ca/ca.pem 2>/dev/null || echo "$CA" > /tmp/ca/ca.pem
-            cp /tmp/ca/ca.pem /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
-            cp /tmp/ca/ca.pem /etc/containers/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
+            cp /tmp/ca/ca.pem /etc/docker/certs.d/${REG_HOST}/ca.crt 2>/dev/null || true
+            cp /tmp/ca/ca.pem /etc/containers/certs.d/${REG_HOST}/ca.crt 2>/dev/null || true
             cp /tmp/ca/ca.pem /root/.docker/ca.pem 2>/dev/null || true
           fi
           [ -f /root/.docker/ca.pem ] || touch /root/.docker/ca.pem 2>/dev/null || true
           mkdir -p /etc/docker
           cat > /etc/docker/daemon.json << 'EOF'
           {
-            "insecure-registries": ["repo.kenshiro.lab.tana"]
+            "insecure-registries": ["repo.kenshiro.lab.tana", "192.168.188.110:30080"]
           }
           EOF
           if [ "$CMD" = "docker" ]; then
@@ -95,6 +98,9 @@ jobs:
             cat > ~/.config/containers/registries.conf.d/lab.conf << 'EOF'
           [[registry]]
           location = "repo.kenshiro.lab.tana"
+          insecure = true
+          [[registry]]
+          location = "192.168.188.110:30080"
           insecure = true
           EOF
           fi
@@ -164,7 +170,7 @@ jobs:
           unset DOCKER_TLS_VERIFY DOCKER_CERT_PATH
           if [ "$CMD" = "docker" ] && docker buildx version >/dev/null 2>&1; then
             docker context use default 2>/dev/null || true
-            DOCKER_TLS_VERIFY=0 docker buildx build --builder multiarch-builder --network=host --add-host=repo.kenshiro.lab.tana:192.168.188.110 --platform linux/amd64,linux/arm64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest --push .
+            DOCKER_TLS_VERIFY=0 docker buildx build --builder multiarch-builder --network=host --add-host=repo.kenshiro.lab.tana:192.168.188.110 --add-host=repo.kenshiro.lab.tana:192.168.188.110:30080 --platform linux/amd64,linux/arm64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest --push .
             docker buildx imagetools inspect ${IMAGE}:${TAG} 2>/dev/null | grep -oP 'Digest: \Ksha256:[a-f0-9]+' | head -1 > image-digest.txt || echo "${IMAGE}:${TAG}" > image-digest.txt
           else
             ARCH=$(uname -m)
