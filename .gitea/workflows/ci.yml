@@ -107,7 +107,7 @@ jobs:
             exit 1
           fi
           CMD=${{ steps.runtime.outputs.cmd }}
-          echo "$REG_TOKEN" | $CMD login --tls-verify=false repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
+          echo "$REG_TOKEN" | $CMD login --tls-verify=false repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login --tls-verify=false 192.168.188.110:30080 -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
       - name: Setup buildx
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
@@ -130,7 +130,7 @@ jobs:
             echo '{"auths":{}}' > /root/.docker/config.json
             cat > /etc/docker/daemon.json << 'EOF'
           {
-            "insecure-registries": ["repo.kenshiro.lab.tana"]
+            "insecure-registries": ["repo.kenshiro.lab.tana", "192.168.188.110:30080"]
           }
           EOF
             docker context use default 2>/dev/null || true
@@ -145,6 +145,9 @@ jobs:
             cat > ~/.config/containers/registries.conf.d/lab.conf << 'EOF'
           [[registry]]
           location = "repo.kenshiro.lab.tana"
+          insecure = true
+          [[registry]]
+          location = "192.168.188.110:30080"
           insecure = true
           EOF
           fi
