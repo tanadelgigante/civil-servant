@@ -142,8 +142,9 @@ jobs:
             docker context rm $(docker context ls --format '{{.Name}}' 2>/dev/null | grep -v default) 2>/dev/null || true
             docker run --privileged --rm --network=host tonistiigi/binfmt --install all || true
             docker buildx rm multiarch-builder 2>/dev/null || true
-            docker buildx create --use --name multiarch-builder --driver docker --driver-opt network=host 2>/dev/null || docker buildx create --use --name multiarch-builder --driver docker-container --driver-opt network=host 2>/dev/null || true
+            docker buildx create --use --name multiarch-builder --driver docker-container --driver-opt network=host 2>/dev/null || docker buildx create --use --name multiarch-builder --driver docker --driver-opt network=host 2>/dev/null || true
             docker buildx inspect --bootstrap 2>/dev/null || true
+            docker buildx use multiarch-builder 2>/dev/null || true
           fi
           if [ "$CMD" = "podman" ]; then
             mkdir -p ~/.config/containers/registries.conf.d
