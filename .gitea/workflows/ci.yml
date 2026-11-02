@@ -112,7 +112,7 @@ jobs:
             exit 1
           fi
           CMD=${{ steps.runtime.outputs.cmd }}
-          echo "$REG_TOKEN" | $CMD login --tls-verify=false 192.168.188.110:30080 -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login --tls-verify=false repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
+          echo "$REG_TOKEN" | $CMD login -u "$REG_USER" --password-stdin 192.168.188.110:30080 2>/dev/null || echo "$REG_TOKEN" | $CMD login --tls-verify=false 192.168.188.110:30080 -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login --tls-verify=false repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
       - name: Setup buildx
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
