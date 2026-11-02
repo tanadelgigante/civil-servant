@@ -171,7 +171,7 @@ jobs:
           unset DOCKER_TLS_VERIFY DOCKER_CERT_PATH
           if [ "$CMD" = "docker" ] && docker buildx version >/dev/null 2>&1; then
             docker context use default 2>/dev/null || true
-            DOCKER_TLS_VERIFY=0 docker buildx build --builder multiarch-builder --network=host --add-host=repo.kenshiro.lab.tana:192.168.188.110 --platform linux/amd64,linux/arm64 -t ${IMAGE_IP}:${TAG} -t ${IMAGE_IP}:latest --push .
+            DOCKER_TLS_VERIFY=0 docker buildx build --builder multiarch-builder --network=host --platform linux/amd64,linux/arm64 -t ${IMAGE_IP}:${TAG} -t ${IMAGE_IP}:latest --push .
             docker buildx imagetools inspect ${IMAGE_IP}:${TAG} 2>/dev/null | grep -oP 'Digest: \Ksha256:[a-f0-9]+' | head -1 > image-digest.txt || echo "${IMAGE_IP}:${TAG}" > image-digest.txt
           else
             ARCH=$(uname -m)
@@ -180,7 +180,7 @@ jobs:
             else
               PLAT="linux/amd64"
             fi
-            $CMD build --network=host --add-host=repo.kenshiro.lab.tana:192.168.188.110 --tls-verify=false --platform=$PLAT -t ${IMAGE_IP}:${TAG} -t ${IMAGE_IP}:latest .
+            $CMD build --network=host --tls-verify=false --platform=$PLAT -t ${IMAGE_IP}:${TAG} -t ${IMAGE_IP}:latest .
             $CMD push --tls-verify=false ${IMAGE_IP}:${TAG}
             $CMD push --tls-verify=false ${IMAGE_IP}:latest
             if [ "$CMD" = "docker" ]; then
