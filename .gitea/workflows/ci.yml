@@ -124,8 +124,8 @@ jobs:
             echo "$CA" | base64 -d > /tmp/certs/repo.crt 2>/dev/null || echo "$CA" > /tmp/certs/repo.crt
             mkdir -p /etc/docker/certs.d/repo.kenshiro.lab.tana
             cp /tmp/certs/repo.crt /etc/docker/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
-            mkdir -p /etc/containers/certs.d/repo.kenshiro.lab.tana
-            cp /tmp/certs/repo.crt /etc/containers/certs.d/repo.kenshiro.lab.tana/ca.crt 2>/dev/null || true
+            mkdir -p /etc/containers/certs.d/192.168.188.110:30080
+            cp /tmp/certs/repo.crt /etc/containers/certs.d/192.168.188.110:30080/ca.crt 2>/dev/null || true
             cp /tmp/certs/repo.crt /root/.docker/ca.pem 2>/dev/null || true
           fi
           [ -f /root/.docker/ca.pem ] || touch /root/.docker/ca.pem 2>/dev/null || true
@@ -150,10 +150,10 @@ jobs:
             mkdir -p ~/.config/containers/registries.conf.d
             cat > ~/.config/containers/registries.conf.d/lab.conf << 'EOF'
           [[registry]]
-          location = "repo.kenshiro.lab.tana"
+          location = "192.168.188.110:30080"
           insecure = true
           [[registry]]
-          location = "192.168.188.110:30080"
+          location = "repo.kenshiro.lab.tana"
           insecure = true
           EOF
           fi
@@ -161,6 +161,7 @@ jobs:
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
           echo "192.168.188.110 repo.kenshiro.lab.tana" >> /etc/hosts
+          IMAGE_IP=192.168.188.110:30080/tanadelgigante/civil-servant
           IMAGE=repo.kenshiro.lab.tana/tanadelgigante/civil-servant
           TAG=$(cat version.ini | tr -d '[:space:]')
           export DOCKER_BUILDKIT=1
@@ -170,8 +171,8 @@ jobs:
           unset DOCKER_TLS_VERIFY DOCKER_CERT_PATH
           if [ "$CMD" = "docker" ] && docker buildx version >/dev/null 2>&1; then
             docker context use default 2>/dev/null || true
-            DOCKER_TLS_VERIFY=0 docker buildx build --builder multiarch-builder --network=host --add-host=repo.kenshiro.lab.tana:192.168.188.110 --add-host=repo.kenshiro.lab.tana:192.168.188.110:30080 --platform linux/amd64,linux/arm64 -t ${IMAGE}:${TAG} -t ${IMAGE}:latest --push .
-            docker buildx imagetools inspect ${IMAGE}:${TAG} 2>/dev/null | grep -oP 'Digest: \Ksha256:[a-f0-9]+' | head -1 > image-digest.txt || echo "${IMAGE}:${TAG}" > image-digest.txt
+            DOCKER_TLS_VERIFY=0 docker buildx build --builder multiarch-builder --network=host --add-host=repo.kenshiro.lab.tana:192.168.188.110 --platform linux/amd64,linux/arm64 -t ${IMAGE_IP}:${TAG} -t ${IMAGE_IP}:latest --push .
+            docker buildx imagetools inspect ${IMAGE_IP}:${TAG} 2>/dev/null | grep -oP 'Digest: \Ksha256:[a-f0-9]+' | head -1 > image-digest.txt || echo "${IMAGE_IP}:${TAG}" > image-digest.txt
           else
             ARCH=$(uname -m)
             if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
@@ -179,13 +180,13 @@ jobs:
             else
               PLAT="linux/amd64"
             fi
-            $CMD build --network=host --add-host=repo.kenshiro.lab.tana:192.168.188.110 --tls-verify=false --platform=$PLAT -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
-            $CMD push --tls-verify=false ${IMAGE}:${TAG}
-            $CMD push --tls-verify=false ${IMAGE}:latest
+            $CMD build --network=host --add-host=repo.kenshiro.lab.tana:192.168.188.110 --tls-verify=false --platform=$PLAT -t ${IMAGE_IP}:${TAG} -t ${IMAGE_IP}:latest .
+            $CMD push --tls-verify=false ${IMAGE_IP}:${TAG}
+            $CMD push --tls-verify=false ${IMAGE_IP}:latest
             if [ "$CMD" = "docker" ]; then
-              $CMD inspect ${IMAGE}:${TAG} --format '{{index .RepoDigests 0}}' > image-digest.txt 2>/dev/null || $CMD inspect ${IMAGE}:${TAG} --format '{{.RepoDigests}}' > image-digest.txt
+              $CMD inspect ${IMAGE_IP}:${TAG} --format '{{index .RepoDigests 0}}' > image-digest.txt 2>/dev/null || $CMD inspect ${IMAGE_IP}:${TAG} --format '{{.RepoDigests}}' > image-digest.txt
             else
-              $CMD inspect ${IMAGE}:${TAG} --format '{{.Digest}}' > image-digest.txt
+              $CMD inspect ${IMAGE_IP}:${TAG} --format '{{.Digest}}' > image-digest.txt
             fi
           fi
           sha256sum image-digest.txt > image-digest.sha256
