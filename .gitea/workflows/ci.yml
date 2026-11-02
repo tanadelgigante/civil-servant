@@ -170,7 +170,7 @@ jobs:
           unset DOCKER_TLS_VERIFY DOCKER_CERT_PATH
           if [ "$CMD" = "docker" ] && docker buildx version >/dev/null 2>&1; then
             docker context use default 2>/dev/null || true
-            DOCKER_TLS_VERIFY=0 docker buildx build --builder multiarch-builder --network=host --platform linux/amd64,linux/arm64 -t ${IMAGE_IP}:${TAG} -t ${IMAGE_IP}:latest --push .
+            DOCKER_TLS_VERIFY=0 docker buildx build --builder multiarch-builder --network=host --output type=image,name=${IMAGE_IP}:${TAG},push=true,registry.insecure=true --platform linux/amd64,linux/arm64 -t ${IMAGE_IP}:${TAG} -t ${IMAGE_IP}:latest .
             docker buildx imagetools inspect ${IMAGE_IP}:${TAG} 2>/dev/null | grep -oP 'Digest: \Ksha256:[a-f0-9]+' | head -1 > image-digest.txt || echo "${IMAGE_IP}:${TAG}" > image-digest.txt
           else
             ARCH=$(uname -m)
