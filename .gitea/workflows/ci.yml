@@ -132,17 +132,12 @@ jobs:
             unset DOCKER_HOST DOCKER_TLS_VERIFY DOCKER_CERT_PATH
             rm -rf /root/.docker/context 2>/dev/null || true
             mkdir -p /root/.docker
-            echo '{"auths":{}}' > /root/.docker/config.json
-            cat > /etc/docker/daemon.json << 'EOF'
-          {
-            "insecure-registries": ["repo.kenshiro.lab.tana", "192.168.188.110:30080"]
-          }
-          EOF
+            echo '{"auths":{"192.168.188.110:30080":{"auth":"'$(echo -n "${{ secrets.REPO_USER }}:${{ secrets.DUNGEONPAT }}" | base64 -w0)'"},"repo.kenshiro.lab.tana":{"auth":"'$(echo -n "${{ secrets.REPO_USER }}:${{ secrets.DUNGEONPAT }}" | base64 -w0)'"}}}' > /root/.docker/config.json
             docker context use default 2>/dev/null || true
             docker context rm $(docker context ls --format '{{.Name}}' 2>/dev/null | grep -v default) 2>/dev/null || true
             docker run --privileged --rm --network=host tonistiigi/binfmt --install all || true
             docker buildx rm multiarch-builder 2>/dev/null || true
-            docker buildx create --use --name multiarch-builder --driver docker-container --driver-opt network=host 2>/dev/null || docker buildx create --use --name multiarch-builder --driver docker --driver-opt network=host 2>/dev/null || true
+            docker buildx create --use --name multiarch-builder --driver docker-container --driver-opt network=host --config /dev/null 2>/dev/null || docker buildx create --use --name multiarch-builder --driver docker-container --driver-opt network=host 2>/dev/null || true
             docker buildx inspect --bootstrap 2>/dev/null || true
             docker buildx use multiarch-builder 2>/dev/null || true
           fi
