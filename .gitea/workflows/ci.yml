@@ -72,14 +72,13 @@ jobs:
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
           REG_HOST="repo.kenshiro.lab.tana"
-          REG_IP="192.168.188.110:30080"
           echo "192.168.188.110 repo.kenshiro.lab.tana" >> /etc/hosts
-          mkdir -p /etc/docker/certs.d/${REG_HOST} /etc/containers/certs.d/${REG_HOST} /root/.docker /tmp/ca
+          mkdir -p /etc/docker/certs.d/${REG_HOST} /etc/containers/certs.d/192.168.188.110:30080 /root/.docker /tmp/ca
           CA="${{ secrets.DUNGEONCA || secrets.REGISTRY_CA }}"
           if [ -n "$CA" ]; then
             echo "$CA" | base64 -d > /tmp/ca/ca.pem 2>/dev/null || echo "$CA" > /tmp/ca/ca.pem
             cp /tmp/ca/ca.pem /etc/docker/certs.d/${REG_HOST}/ca.crt 2>/dev/null || true
-            cp /tmp/ca/ca.pem /etc/containers/certs.d/${REG_HOST}/ca.crt 2>/dev/null || true
+            cp /tmp/ca/ca.pem /etc/containers/certs.d/192.168.188.110:30080/ca.crt 2>/dev/null || true
             cp /tmp/ca/ca.pem /root/.docker/ca.pem 2>/dev/null || true
           fi
           [ -f /root/.docker/ca.pem ] || touch /root/.docker/ca.pem 2>/dev/null || true
@@ -97,10 +96,10 @@ jobs:
             mkdir -p ~/.config/containers/registries.conf.d
             cat > ~/.config/containers/registries.conf.d/lab.conf << 'EOF'
           [[registry]]
-          location = "repo.kenshiro.lab.tana"
+          location = "192.168.188.110:30080"
           insecure = true
           [[registry]]
-          location = "192.168.188.110:30080"
+          location = "repo.kenshiro.lab.tana"
           insecure = true
           EOF
           fi
@@ -113,7 +112,7 @@ jobs:
             exit 1
           fi
           CMD=${{ steps.runtime.outputs.cmd }}
-          echo "$REG_TOKEN" | $CMD login --tls-verify=false repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login --tls-verify=false 192.168.188.110:30080 -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
+          echo "$REG_TOKEN" | $CMD login --tls-verify=false 192.168.188.110:30080 -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login --tls-verify=false repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin 2>/dev/null || echo "$REG_TOKEN" | $CMD login repo.kenshiro.lab.tana -u "$REG_USER" --password-stdin
       - name: Setup buildx
         run: |
           CMD=${{ steps.runtime.outputs.cmd }}
